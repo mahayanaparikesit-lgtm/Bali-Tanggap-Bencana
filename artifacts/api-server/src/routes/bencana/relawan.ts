@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { relawanTable } from "@workspace/db/schema";
+import { relawanTable, usersTable } from "@workspace/db/schema";
 import { eq, or } from "drizzle-orm";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { CreateRelawanBody, VerifikasiRelawanBody, GetRelawanQueryParams } from "@workspace/api-zod";
@@ -16,9 +16,24 @@ router.get("/relawan", requireRole(["admin"]), async (req, res) => {
   return res.json(rows.reverse());
 });
 
-router.get("/relawan/cek-email", requireAuth, async (req, res) => {
+// Relawan tidak punya user_id FK ke users — pemilik data dicocokkan lewat email
+// akun, sama seperti PATCH /penugasan/:id/lapangan.
+async function emailAkun(req: any): Promise<string | null> {
+  const [user] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.auth.userId));
+  return user?.email ?? null;
+}
+
+const sameEmail = (a: string | null | undefined, b: string | null | undefined) =>
+  !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+router.get("/relawan/cek-email", requireAuth, async (req: any, res) => {
   const { email } = req.query as Record<string, string>;
   if (!email) return res.json({ terdaftar: false });
+  // Selain admin hanya boleh mengecek email akunnya sendiri — dulu siapa pun
+  // yang login bisa menarik NIK/HP/alamat relawan mana pun lewat email.
+  if (req.auth.role !== "admin" && !sameEmail(email, await emailAkun(req))) {
+    return res.status(403).json({ message: "Tidak diizinkan" });
+  }
   const rows = await db.select().from(relawanTable).where(eq(relawanTable.email, email));
   if (rows.length === 0) return res.json({ terdaftar: false });
   return res.json({ terdaftar: true, relawan: rows[0] });
@@ -53,11 +68,14 @@ router.post("/relawan", async (req, res) => {
   return res.status(201).json(row);
 });
 
-router.get("/relawan/:id", requireAuth, async (req, res) => {
+router.get("/relawan/:id", requireAuth, async (req: any, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ message: "ID tidak valid" });
   const [row] = await db.select().from(relawanTable).where(eq(relawanTable.id, id));
   if (!row) return res.status(404).json({ message: "Relawan tidak ditemukan" });
+  if (req.auth.role !== "admin" && !sameEmail(row.email, await emailAkun(req))) {
+    return res.status(403).json({ message: "Tidak diizinkan" });
+  }
   return res.json(row);
 });
 
