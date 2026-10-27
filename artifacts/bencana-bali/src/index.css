@@ -1,0 +1,300 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+/* Font tokens dari design_handoff_bali_rief/README.md — Plus Jakarta Sans (UI/judul)
+   + IBM Plex Mono (angka/kode/timestamp). Ini satu-satunya acuan tipografi;
+   pilihan Barlow Condensed/Public Sans sebelumnya sudah digantikan penuh. */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-card-border: hsl(var(--card-border));
+
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-popover-border: hsl(var(--popover-border));
+
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-primary-border: var(--primary-border);
+
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-secondary-border: var(--secondary-border);
+
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-muted-border: var(--muted-border);
+
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-accent-border: var(--accent-border);
+
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-destructive-border: var(--destructive-border);
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-primary-border: var(--sidebar-primary-border);
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-accent-border: var(--sidebar-accent-border);
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+
+  /* Token tambahan dari design_handoff_bali_rief — di luar skema shadcn standar,
+     dipakai lewat utility Tailwind biasa (bg-surface-2, text-text3, dst) supaya
+     semua halaman baru pakai satu sumber warna yang sama. Jangan bikin token
+     warna baru di luar sini; tambahkan di sini dulu baru dipakai di halaman. */
+  --color-surface: hsl(var(--card));
+  --color-surface-2: hsl(var(--muted));
+  --color-border-strong: var(--border-strong);
+  --color-text2: hsl(var(--muted-foreground));
+  --color-text3: var(--text3);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-status-wait-fg: var(--status-wait-fg);
+  --color-status-wait-bg: var(--status-wait-bg);
+  --color-status-wait-br: var(--status-wait-br);
+  --color-status-ver-fg: var(--status-ver-fg);
+  --color-status-ver-bg: var(--status-ver-bg);
+  --color-status-ver-br: var(--status-ver-br);
+  --color-status-done-fg: var(--status-done-fg);
+  --color-status-done-bg: var(--status-done-bg);
+  --color-status-done-br: var(--status-done-br);
+  --color-status-rej-fg: var(--status-rej-fg);
+  --color-status-rej-bg: var(--status-rej-bg);
+  --color-status-rej-br: var(--status-rej-br);
+  --color-status-act-fg: var(--status-act-fg);
+  --color-status-act-bg: var(--status-act-bg);
+  --color-status-act-br: var(--status-act-br);
+
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --font-display: var(--app-font-display);
+
+  --text-xs: 0.75rem;
+  --text-xs--line-height: calc(1 / 0.75);
+  --text-sm: 0.875rem;
+  --text-sm--line-height: calc(1.25 / 0.875);
+  --text-base: 1rem;
+  --text-base--line-height: calc(1.5 / 1);
+  --text-lg: 1.125rem;
+  --text-lg--line-height: calc(1.75 / 1.125);
+  --text-xl: 1.25rem;
+  --text-xl--line-height: calc(1.75 / 1.25);
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: calc(2 / 1.5);
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: calc(2.25 / 1.875);
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: calc(2.5 / 2.25);
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* LIGHT MODE — nilai HSL persis dari design_handoff_bali_rief (semua file .dc.html
+   pakai --bg/--surface/--text/--primary dst yang sama; ini satu-satunya sumber). */
+:root {
+  --button-outline: rgba(0,0,0, .10);
+  --badge-outline: rgba(0,0,0, .05);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(0,0,0, .03);
+  --elevate-2: rgba(0,0,0, .08);
+
+  --background: 220 20% 97%;
+  --foreground: 220 25% 12%;
+  --border: 220 15% 86%;
+  --border-strong: hsl(220 15% 74%);
+  --card: 0 0% 100%;
+  --card-foreground: 220 25% 12%;
+  --card-border: 220 15% 86%;
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 220 25% 12%;
+  --sidebar-border: 220 15% 86%;
+  --sidebar-primary: 4 80% 45%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 220 20% 94%;
+  --sidebar-accent-foreground: 220 25% 12%;
+  --sidebar-ring: 4 80% 45%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 220 25% 12%;
+  --popover-border: 220 15% 86%;
+  --primary: 4 80% 45%;
+  --primary-foreground: 0 0% 100%;
+  --primary-hover: hsl(4 80% 38%);
+  --primary-soft: hsl(4 80% 96%);
+  --secondary: 28 85% 55%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 220 20% 94%;
+  --muted-foreground: 220 10% 40%;
+  --text3: hsl(220 10% 52%);
+  --accent: 28 85% 55%;
+  --accent-foreground: 0 0% 100%;
+  --accent-ink: hsl(28 90% 26%);
+  --destructive: 0 85% 40%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 220 15% 86%;
+  --ring: 4 80% 45%;
+  --chart-1: 4 80% 45%;
+  --chart-2: 28 85% 55%;
+  --chart-3: 200 80% 42%;
+  --chart-4: 142 60% 38%;
+  --chart-5: 275 60% 50%;
+
+  --status-wait-fg: hsl(28 90% 32%); --status-wait-bg: hsl(28 90% 92%); --status-wait-br: hsl(28 80% 72%);
+  --status-ver-fg: hsl(210 80% 36%); --status-ver-bg: hsl(210 80% 94%); --status-ver-br: hsl(210 75% 72%);
+  --status-done-fg: hsl(155 55% 26%); --status-done-bg: hsl(155 50% 92%); --status-done-br: hsl(155 40% 68%);
+  --status-rej-fg: hsl(220 10% 36%); --status-rej-bg: hsl(220 14% 92%); --status-rej-br: hsl(220 12% 74%);
+  --status-act-fg: hsl(4 80% 40%); --status-act-bg: hsl(4 80% 95%); --status-act-br: hsl(4 75% 74%);
+
+  --app-font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  /* Playfair Display cuma dipakai di Pilih Tempat Donasi (donatur), sesuai
+     Pilih Tempat Donasi.dc.html — halaman itu sendiri yang load font-nya lewat
+     <link>, di sini cuma daftarkan sebagai fallback chain font-serif. */
+  --app-font-serif: 'Playfair Display', Georgia, serif;
+  --app-font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --app-font-display: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --radius: .625rem;
+  --shadow-sm: 0px 1px 3px 0px rgba(0,0,0,.08), 0px 1px 2px -1px rgba(0,0,0,.06);
+  --shadow: 0px 4px 6px -1px rgba(0,0,0,.07), 0px 2px 4px -2px rgba(0,0,0,.06);
+  --shadow-md: 0px 10px 15px -3px rgba(0,0,0,.07), 0px 4px 6px -4px rgba(0,0,0,.06);
+  --shadow-lg: 0px 20px 25px -5px rgba(0,0,0,.07), 0px 8px 10px -6px rgba(0,0,0,.05);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+
+  --sidebar-primary-border: hsl(4 80% 37%);
+  --sidebar-accent-border: hsl(220 15% 86%);
+  --primary-border: hsl(4 80% 37%);
+  --secondary-border: hsl(28 85% 47%);
+  --muted-border: hsl(220 15% 86%);
+  --accent-border: hsl(28 85% 47%);
+  --destructive-border: hsl(0 85% 32%);
+}
+
+.dark {
+  --button-outline: rgba(255,255,255, .10);
+  --badge-outline: rgba(255,255,255, .05);
+  --opaque-button-border-intensity: 9;
+  --elevate-1: rgba(255,255,255, .04);
+  --elevate-2: rgba(255,255,255, .09);
+
+  --background: 220 25% 9%;
+  --foreground: 220 15% 95%;
+  --border: 220 15% 24%;
+  --border-strong: hsl(220 14% 34%);
+  --card: 220 22% 13%;
+  --card-foreground: 220 15% 95%;
+  --card-border: 220 15% 24%;
+  --sidebar: 220 25% 8%;
+  --sidebar-foreground: 220 15% 95%;
+  --sidebar-border: 220 15% 24%;
+  --sidebar-primary: 4 75% 58%;
+  --sidebar-primary-foreground: 220 25% 9%;
+  --sidebar-accent: 220 20% 17%;
+  --sidebar-accent-foreground: 220 15% 95%;
+  --sidebar-ring: 4 75% 58%;
+  --popover: 220 22% 13%;
+  --popover-foreground: 220 15% 95%;
+  --popover-border: 220 15% 24%;
+  --primary: 4 75% 58%;
+  --primary-foreground: 220 25% 9%;
+  --primary-hover: hsl(4 75% 64%);
+  --primary-soft: hsla(4, 75%, 58%, 0.14);
+  --secondary: 28 75% 55%;
+  --secondary-foreground: 220 25% 9%;
+  --muted: 220 20% 17%;
+  --muted-foreground: 220 10% 68%;
+  --text3: hsl(220 10% 58%);
+  --accent: 28 75% 55%;
+  --accent-foreground: 220 25% 9%;
+  --accent-ink: hsl(28 80% 80%);
+  --destructive: 0 70% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --input: 220 15% 24%;
+  --ring: 4 75% 58%;
+  --chart-1: 4 75% 58%;
+  --chart-2: 28 75% 55%;
+  --chart-3: 200 75% 52%;
+  --chart-4: 142 60% 48%;
+  --chart-5: 275 60% 60%;
+
+  --status-wait-fg: hsl(28 80% 70%); --status-wait-bg: hsla(28, 80%, 55%, 0.16); --status-wait-br: hsla(28, 80%, 60%, 0.5);
+  --status-ver-fg: hsl(210 85% 72%); --status-ver-bg: hsla(210, 85%, 60%, 0.16); --status-ver-br: hsla(210, 80%, 65%, 0.5);
+  --status-done-fg: hsl(155 50% 64%); --status-done-bg: hsla(155, 50%, 50%, 0.16); --status-done-br: hsla(155, 45%, 55%, 0.5);
+  --status-rej-fg: hsl(220 10% 68%); --status-rej-bg: hsla(220, 10%, 60%, 0.14); --status-rej-br: hsla(220, 10%, 60%, 0.45);
+  --status-act-fg: hsl(4 80% 72%); --status-act-bg: hsla(4, 80%, 58%, 0.16); --status-act-br: hsla(4, 75%, 62%, 0.5);
+
+  --shadow-sm: 0px 1px 3px 0px rgba(0,0,0,.3);
+  --shadow: 0px 4px 6px -1px rgba(0,0,0,.3);
+  --shadow-md: 0px 10px 15px -3px rgba(0,0,0,.3);
+  --shadow-lg: 0px 20px 25px -5px rgba(0,0,0,.3);
+
+  --sidebar-primary-border: hsl(4 75% 66%);
+  --sidebar-accent-border: hsl(220 20% 20%);
+  --primary-border: hsl(4 75% 66%);
+  --secondary-border: hsl(28 80% 66%);
+  --muted-border: hsl(220 20% 22%);
+  --accent-border: hsl(28 75% 63%);
+  --destructive-border: hsl(0 70% 63%);
+}
+
+@layer base {
+  * { @apply border-border; }
+  body { @apply font-sans antialiased bg-background text-foreground; }
+}
+
+@layer utilities {
+  input[type="search"]::-webkit-search-cancel-button { @apply hidden; }
+
+  .hover-elevate:not(.no-default-hover-elevate),
+  .active-elevate:not(.no-default-active-elevate) {
+    position: relative; z-index: 0;
+  }
+  .hover-elevate:not(.no-default-hover-elevate)::after,
+  .active-elevate:not(.no-default-active-elevate)::after {
+    content: ""; pointer-events: none; position: absolute; inset: 0px; border-radius: inherit; z-index: 999;
+  }
+  .hover-elevate:hover:not(.no-default-hover-elevate)::after { background-color: var(--elevate-1); }
+  .active-elevate:active:not(.no-default-active-elevate)::after { background-color: var(--elevate-2); }
+
+  /* Leaflet (DisasterMap.tsx) hardcodes a white popup — theme it to match
+     light/dark instead of always-white, which fails contrast in dark mode. */
+  .leaflet-popup-content-wrapper {
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--border));
+  }
+  .leaflet-popup-tip {
+    background: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+  }
+  .leaflet-popup-close-button {
+    color: hsl(var(--foreground)) !important;
+  }
+}
