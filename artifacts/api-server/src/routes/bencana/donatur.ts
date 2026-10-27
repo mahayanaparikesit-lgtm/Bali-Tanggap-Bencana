@@ -32,11 +32,13 @@ router.get("/donatur/bencana-aktif", requireAuth, async (req, res) => {
     db.select().from(kebutuhanTable),
     db.select({ laporan_id: penugasanTable.laporan_id, relawan_id: penugasanTable.relawan_id })
       .from(penugasanTable).where(eq(penugasanTable.status, "aktif")),
+    // Hanya donasi yang sudah diterima admin — yang masih "menunggu" belum
+    // tentu benar-benar ditransfer, dan yang "ditolak" tidak pernah masuk.
     db.select({
       laporan_id: donasiTable.laporan_id,
       jenis: donasiTable.jenis,
       jumlah_dana: donasiTable.jumlah_dana,
-    }).from(donasiTable),
+    }).from(donasiTable).where(eq(donasiTable.status, "diterima")),
   ]);
 
   const relawanIds = [...new Set(penugasanRows.map(p => p.relawan_id).filter(Boolean) as number[])];
@@ -84,13 +86,31 @@ router.post("/donasi", requireAuth, donasiLimiter, async (req, res) => {
   }
   const data = result.data;
   const auth = (req as any).auth;
+
+  // Jumlah negatif/nol dulu lolos skema — donasi barang negatif bahkan bisa
+  // MENGURANGI jumlah_terpenuhi kebutuhan orang lain.
+  for (const v of [data.jumlah_dana, data.jumlah_barang]) {
+    if (v != null && (!Number.isInteger(v) || v <= 0)) {
+      return res.status(400).json({ message: "Jumlah donasi harus bilangan bulat lebih dari 0" });
+    }
+  }
+
+  // kebutuhan_id wajib ada DAN milik laporan yang sama — sebelumnya diterima
+  // apa adanya, jadi siapa pun yang login bisa menaikkan progres kebutuhan mana pun.
+  const kebutuhan_id = typeof req.body.kebutuhan_id === "number" ? req.body.kebutuhan_id : undefined;
+  if (kebutuhan_id !== undefined) {
+    const [keb] = await db.select({ laporan_id: kebutuhanTable.laporan_id }).from(kebutuhanTable).where(eq(kebutuhanTable.id, kebutuhan_id));
+    if (!keb || keb.laporan_id !== data.laporan_id) {
+      return res.status(400).json({ message: "Kebutuhan tidak ditemukan untuk lokasi ini" });
+    }
+  }
+
   const [row] = await db.insert(donasiTable).values({
     ...data,
     user_id: auth?.userId ?? null,
   }).returning();
 
   // Jika donasi barang terkait kebutuhan tertentu, tambah jumlah_terpenuhi
-  const kebutuhan_id = typeof req.body.kebutuhan_id === "number" ? req.body.kebutuhan_id : undefined;
   if (kebutuhan_id && data.jumlah_barang && data.jenis === "barang") {
     await db.update(kebutuhanTable)
       .set({ jumlah_terpenuhi: sql`jumlah_terpenuhi + ${data.jumlah_barang}` })

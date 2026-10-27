@@ -20,7 +20,9 @@ router.get("/transparansi/laporan", async (req, res) => {
   const penugasan = await db.select().from(penugasanTable);
   // Hanya nama — NIK/HP/alamat/KTP relawan tidak boleh ikut ke endpoint publik.
   const relawan = await db.select({ id: relawanTable.id, nama: relawanTable.nama }).from(relawanTable);
-  const donasi = await db.select().from(donasiTable);
+  // Halaman transparansi menjumlahkan daftar ini — hanya donasi yang sudah
+  // diterima admin, sama seperti total_dana_terkumpul di /donatur/bencana-aktif.
+  const donasi = await db.select().from(donasiTable).where(eq(donasiTable.status, "diterima"));
 
   const kebutuhanMap: Record<number, typeof kebutuhan> = {};
   for (const k of kebutuhan) {
