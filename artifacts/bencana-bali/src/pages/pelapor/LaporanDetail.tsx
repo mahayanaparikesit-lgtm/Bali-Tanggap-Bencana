@@ -85,19 +85,24 @@ export default function LaporanDetail() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-[10px] border-border bg-surface shadow-none">
-          <CardHeader className="pb-3"><CardTitle className="text-base font-bold">Pelapor</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-text2" />
-              <span>{laporan.nama_pelapor}{laporan.jabatan_pelapor ? ` — ${laporan.jabatan_pelapor}` : ""}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-text2" />
-              <span className="font-mono">{laporan.kontak_pelapor}</span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Data pelapor hanya dikirim API ke admin (lihat GET /laporan/:id). */}
+        {laporan.nama_pelapor && (
+          <Card className="rounded-[10px] border-border bg-surface shadow-none">
+            <CardHeader className="pb-3"><CardTitle className="text-base font-bold">Pelapor</CardTitle></CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <User className="h-4 w-4 text-text2" />
+                <span>{laporan.nama_pelapor}{laporan.jabatan_pelapor ? ` — ${laporan.jabatan_pelapor}` : ""}</span>
+              </div>
+              {laporan.kontak_pelapor && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-text2" />
+                  <span className="font-mono">{laporan.kontak_pelapor}</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {laporan.foto_urls && laporan.foto_urls.length > 0 && (
           <Card className="rounded-[10px] border-border bg-surface shadow-none">

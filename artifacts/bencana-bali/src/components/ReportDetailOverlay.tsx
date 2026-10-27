@@ -127,10 +127,12 @@ export function ReportDetailOverlay({ id, onClose }: { id: number; onClose: () =
                   <span className="text-xs font-bold uppercase tracking-[0.05em] text-text3">Relawan</span>
                   <b className="font-mono text-[17px] font-semibold">{penugasan.length || (ringkasan?.relawan_bertugas?.length ?? 0)} orang</b>
                 </span>
-                <span className="flex flex-col gap-[3px]">
-                  <span className="text-xs font-bold uppercase tracking-[0.05em] text-text3">Pelapor</span>
-                  <b className="text-[15px] font-bold">{laporan.nama_pelapor}</b>
-                </span>
+                {laporan.nama_pelapor && (
+                  <span className="flex flex-col gap-[3px]">
+                    <span className="text-xs font-bold uppercase tracking-[0.05em] text-text3">Pelapor</span>
+                    <b className="text-[15px] font-bold">{laporan.nama_pelapor}</b>
+                  </span>
+                )}
               </div>
             </div>
 
@@ -141,7 +143,9 @@ export function ReportDetailOverlay({ id, onClose }: { id: number; onClose: () =
                   <span className="font-mono text-[12.5px] text-text3">{formatWaktu(laporan.created_at)}</span>
                   <span className="flex flex-col gap-[3px]">
                     <b className="text-[14.5px] font-bold">Laporan masuk</b>
-                    <span className="text-[13px] leading-[1.45] text-text2">Dikirim oleh {laporan.nama_pelapor}</span>
+                    {laporan.nama_pelapor && (
+                      <span className="text-[13px] leading-[1.45] text-text2">Dikirim oleh {laporan.nama_pelapor}</span>
+                    )}
                   </span>
                 </div>
               </div>

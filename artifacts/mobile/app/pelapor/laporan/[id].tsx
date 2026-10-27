@@ -64,10 +64,13 @@ export default function LaporanDetail() {
             ) : null}
           </Section>
 
-          <Section title="Pelapor">
-            <InfoRow icon="user" label="" value={`${laporan.nama_pelapor}${laporan.jabatan_pelapor ? ` — ${laporan.jabatan_pelapor}` : ""}`} bare />
-            <InfoRow icon="phone" label="" value={laporan.kontak_pelapor} bare />
-          </Section>
+          {/* Data pelapor hanya dikirim API ke admin (lihat GET /laporan/:id). */}
+          {laporan.nama_pelapor ? (
+            <Section title="Pelapor">
+              <InfoRow icon="user" label="" value={`${laporan.nama_pelapor}${laporan.jabatan_pelapor ? ` — ${laporan.jabatan_pelapor}` : ""}`} bare />
+              {laporan.kontak_pelapor ? <InfoRow icon="phone" label="" value={laporan.kontak_pelapor} bare /> : null}
+            </Section>
+          ) : null}
 
           {laporan.foto_urls && laporan.foto_urls.length > 0 && (
             <Section title="Dokumentasi">

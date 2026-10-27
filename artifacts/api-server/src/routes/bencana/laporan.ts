@@ -4,11 +4,15 @@ import { laporanTable, kebutuhanTable, penugasanTable } from "@workspace/db/sche
 import { eq, count } from "drizzle-orm";
 import { requireRole, getAuthContext } from "../../middlewares/auth";
 import { CreateLaporanBody, UpdateLaporanBody, GetLaporanQueryParams, CreateKebutuhanBody } from "@workspace/api-zod";
+import { publicLaporan, publicPenugasan } from "../../lib/publicFields";
 
 const router = Router();
 
+// Status yang sudah diverifikasi admin dan boleh dilihat non-admin.
+const PUBLIC_STATUSES = ["terverifikasi", "selesai"];
+
 // Admin-only — daftar mentah termasuk foto_ktp_url & kontak_pelapor. Publik
-// pakai /laporan/aktif (kolom terkurasi) atau /transparansi/laporan.
+// pakai /laporan/aktif atau /transparansi/laporan (keduanya kolom terkurasi).
 router.get("/laporan", requireRole(["admin"]), async (req, res) => {
   const query = GetLaporanQueryParams.safeParse(req.query);
   const status = query.success ? query.data.status : undefined;
@@ -74,13 +78,18 @@ router.get("/laporan/:id", async (req, res) => {
 
   const penugasan = await db.select().from(penugasanTable).where(eq(penugasanTable.laporan_id, id));
 
-  // Endpoint ini publik (dipakai landing page & Transparansi tanpa login) —
-  // foto KTP pelapor hanya boleh ikut untuk admin, jangan pernah disebarkan.
+  // Endpoint ini publik (dipakai landing page & Transparansi tanpa login).
+  // Admin melihat baris lengkap. Selain admin: laporan "menunggu" belum
+  // diverifikasi jadi dianggap tidak ada (404, bukan 403, supaya ID laporan
+  // yang belum terbit tidak bisa ditebak), dan field dibatasi ke proyeksi aman.
   const auth = getAuthContext(req);
-  const isAdmin = auth?.role === "admin";
-  const { foto_ktp_url, ...publicLaporan } = laporan;
-
-  return res.json({ ...(isAdmin ? laporan : publicLaporan), penugasan });
+  if (auth?.role === "admin") {
+    return res.json({ ...laporan, penugasan });
+  }
+  if (!PUBLIC_STATUSES.includes(laporan.status)) {
+    return res.status(404).json({ message: "Laporan tidak ditemukan" });
+  }
+  return res.json({ ...publicLaporan(laporan), penugasan: penugasan.map(publicPenugasan) });
 });
 
 const handleUpdateLaporan = async (req: any, res: any) => {
