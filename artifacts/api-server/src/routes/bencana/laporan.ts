@@ -5,6 +5,7 @@ import { eq, count } from "drizzle-orm";
 import { requireRole, getAuthContext } from "../../middlewares/auth";
 import { CreateLaporanBody, UpdateLaporanBody, GetLaporanQueryParams, CreateKebutuhanBody } from "@workspace/api-zod";
 import { publicLaporan, publicPenugasan } from "../../lib/publicFields";
+import { laporanLimiter } from "../../middlewares/rateLimit";
 
 const router = Router();
 
@@ -22,7 +23,7 @@ router.get("/laporan", requireRole(["admin"]), async (req, res) => {
   res.json(rows.reverse());
 });
 
-router.post("/laporan", async (req, res) => {
+router.post("/laporan", laporanLimiter, async (req, res) => {
   const result = CreateLaporanBody.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ message: "Data tidak valid", errors: result.error.flatten() });
@@ -124,7 +125,7 @@ router.patch("/laporan/:id", requireRole(["admin"]), handleUpdateLaporan);
 // jendela waktu wajar untuk submit awal.
 const KEBUTUHAN_BULK_WINDOW_MS = 15 * 60 * 1000;
 
-router.post("/laporan/:id/kebutuhan-bulk", async (req, res) => {
+router.post("/laporan/:id/kebutuhan-bulk", laporanLimiter, async (req: any, res: any) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ message: "ID tidak valid" });
   if (!Array.isArray(req.body) || req.body.length === 0) return res.json([]);

@@ -5,6 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { UpdateDonasiBody } from "@workspace/api-zod";
 import { publicLaporan } from "../../lib/publicFields";
+import { donasiLimiter } from "../../middlewares/rateLimit";
 
 const router = Router();
 
@@ -76,7 +77,7 @@ router.get("/donatur/bencana-aktif", requireAuth, async (req, res) => {
   return res.json(result);
 });
 
-router.post("/donasi", requireAuth, async (req, res) => {
+router.post("/donasi", requireAuth, donasiLimiter, async (req, res) => {
   const result = publicDonasiSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ message: "Data tidak valid", errors: result.error.flatten() });

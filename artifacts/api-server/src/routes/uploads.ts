@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import multer from "multer";
 import crypto from "node:crypto";
 import { supabase, UPLOAD_BUCKET } from "../lib/supabase";
+import { uploadLimiter } from "../middlewares/rateLimit";
 
 const ALLOWED_MIME: Record<string, string> = {
   "image/jpeg": ".jpg",
@@ -30,7 +31,7 @@ const router: IRouter = Router();
 // Publik (tanpa auth) dengan sengaja — pelapor darurat tanpa akun tetap harus
 // bisa lampirkan foto. Dibatasi jenis file, ukuran, dan jumlah per request
 // supaya tidak jadi celah penyimpanan/serving berkas sembarangan.
-router.post("/uploads", (req: any, res: any) => {
+router.post("/uploads", uploadLimiter, (req: any, res: any) => {
   upload.array("files", 6)(req, res, async (err: any) => {
     if (err) {
       return res.status(400).json({ message: err.message || "Gagal mengunggah berkas." });

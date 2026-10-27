@@ -4,6 +4,7 @@ import { usersTable, insertUserSchema } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 import { requireRole, signAuthToken, getAuthContext } from "../../middlewares/auth";
+import { authLimiter } from "../../middlewares/rateLimit";
 
 const router = Router();
 
@@ -12,7 +13,7 @@ const router = Router();
 const PUBLIC_REGISTER_ROLES = ["pelapor", "donatur"];
 const ALL_ROLES = ["admin", "relawan", "donatur", "pelapor"];
 
-router.post("/auth/register", async (req, res) => {
+router.post("/auth/register", authLimiter, async (req, res) => {
   const requestedRole = PUBLIC_REGISTER_ROLES.includes(req.body?.role) ? req.body.role : "pelapor";
   const result = insertUserSchema.safeParse({ ...req.body, role: requestedRole });
   if (!result.success) {
@@ -38,7 +39,7 @@ router.post("/auth/register", async (req, res) => {
   });
 });
 
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authLimiter, async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ message: "Email dan password wajib diisi" });
