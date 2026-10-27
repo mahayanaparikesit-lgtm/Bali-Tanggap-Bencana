@@ -8,11 +8,11 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { colors, fonts, spacing, radius, statusTokens } from "@/lib/theme";
 import { formatRupiah, formatRupiahShort } from "@/lib/format";
 
-type Donasi = { id: number; jenis: string; jumlah_dana: number | null; jumlah_barang: number | null; nama_barang: string | null; nama_donatur: string; pesan: string | null; created_at: string };
+type Donasi = { id: number; jenis: string; jumlah_dana: number | null; jumlah_barang: number | null; nama_barang: string | null; nama_donatur: string; created_at: string };
 type Kebutuhan = { id: number; nama_item: string; jumlah_dibutuhkan: number; jumlah_terpenuhi: number; satuan: string; keterangan: string | null };
 type TransparansiLaporan = {
   id: number; judul: string; jenis_bencana: string; lokasi: string; status: string;
-  jumlah_terdampak: number | null; nama_pelapor: string; jabatan_pelapor: string | null; created_at: string;
+  jumlah_terdampak: number | null; created_at: string;
   kebutuhan: Kebutuhan[]; relawan_bertugas: string[]; donasi: Donasi[];
 };
 
@@ -151,7 +151,7 @@ function LaporanCard({ laporan }: { laporan: TransparansiLaporan }) {
       )}
 
       <Text style={styles.footer}>
-        Dilaporkan oleh {laporan.nama_pelapor}{laporan.jabatan_pelapor ? ` (${laporan.jabatan_pelapor})` : ""} · {new Date(laporan.created_at).toLocaleDateString("id-ID")}
+        Dilaporkan {new Date(laporan.created_at).toLocaleDateString("id-ID")}
       </Text>
     </View>
   );

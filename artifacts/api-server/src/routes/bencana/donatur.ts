@@ -4,6 +4,7 @@ import { laporanTable, kebutuhanTable, relawanTable, penugasanTable, donasiTable
 import { eq, sql } from "drizzle-orm";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { UpdateDonasiBody } from "@workspace/api-zod";
+import { publicLaporan } from "../../lib/publicFields";
 
 const router = Router();
 
@@ -41,7 +42,7 @@ router.get("/donatur/bencana-aktif", requireAuth, async (req, res) => {
   const koordinatorMap: Record<number, string> = {};
 
   if (relawanIds.length > 0) {
-    const relawanRows = await db.select().from(relawanTable);
+    const relawanRows = await db.select({ id: relawanTable.id, nama: relawanTable.nama }).from(relawanTable);
     for (const p of penugasanRows) {
       if (p.relawan_id && !koordinatorMap[p.laporan_id]) {
         const rel = relawanRows.find(r => r.id === p.relawan_id);
@@ -65,7 +66,7 @@ router.get("/donatur/bencana-aktif", requireAuth, async (req, res) => {
   }
 
   const result = rows.reverse().map(r => ({
-    ...r,
+    ...publicLaporan(r),
     kebutuhan: kebutuhanByLaporan[r.id] || [],
     koordinator: koordinatorMap[r.id] || null,
     posko: POSKO_UTAMA,

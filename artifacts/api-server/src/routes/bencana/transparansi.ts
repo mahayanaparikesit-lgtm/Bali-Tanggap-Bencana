@@ -2,6 +2,7 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { laporanTable, kebutuhanTable, inventarisTable, penugasanTable, relawanTable, donasiTable } from "@workspace/db/schema";
 import { eq, ne } from "drizzle-orm";
+import { publicLaporan, publicDonasi } from "../../lib/publicFields";
 
 const router = Router();
 
@@ -17,7 +18,8 @@ router.get("/transparansi/laporan", async (req, res) => {
 
   const kebutuhan = await db.select().from(kebutuhanTable);
   const penugasan = await db.select().from(penugasanTable);
-  const relawan = await db.select().from(relawanTable);
+  // Hanya nama — NIK/HP/alamat/KTP relawan tidak boleh ikut ke endpoint publik.
+  const relawan = await db.select({ id: relawanTable.id, nama: relawanTable.nama }).from(relawanTable);
   const donasi = await db.select().from(donasiTable);
 
   const kebutuhanMap: Record<number, typeof kebutuhan> = {};
@@ -47,10 +49,10 @@ router.get("/transparansi/laporan", async (req, res) => {
       .filter(Boolean);
 
     return {
-      ...l,
+      ...publicLaporan(l),
       kebutuhan: kebutuhanMap[l.id] || [],
       relawan_bertugas: relawanNama,
-      donasi: donasiMap[l.id] || [],
+      donasi: (donasiMap[l.id] || []).map(publicDonasi),
       foto_penyerahan: FOTO_DUMMY.filter(f => f.laporan_id === l.id),
     };
   });
