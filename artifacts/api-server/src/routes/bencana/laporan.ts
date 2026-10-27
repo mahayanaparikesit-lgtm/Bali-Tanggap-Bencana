@@ -6,6 +6,7 @@ import { requireRole, getAuthContext } from "../../middlewares/auth";
 import { CreateLaporanBody, UpdateLaporanBody, GetLaporanQueryParams, CreateKebutuhanBody } from "@workspace/api-zod";
 import { publicLaporan, publicPenugasan } from "../../lib/publicFields";
 import { laporanLimiter } from "../../middlewares/rateLimit";
+import { isOwnUploadUrl } from "../../lib/supabase";
 
 const router = Router();
 
@@ -27,6 +28,13 @@ router.post("/laporan", laporanLimiter, async (req, res) => {
   const result = CreateLaporanBody.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ message: "Data tidak valid", errors: result.error.flatten() });
+  }
+  // Foto harus hasil POST /uploads kita sendiri — jangan simpan URL bebas
+  // (bisa menunjuk ke konten pihak ketiga yang lalu tampil di halaman publik).
+  const fotoAsing = [...(result.data.foto_urls ?? []), result.data.foto_ktp_url]
+    .some(u => typeof u === "string" && u !== "" && !isOwnUploadUrl(u));
+  if (fotoAsing) {
+    return res.status(400).json({ message: "Foto harus diunggah lewat aplikasi, bukan tautan dari luar." });
   }
   const [row] = await db.insert(laporanTable).values(result.data).returning();
   return res.status(201).json(row);

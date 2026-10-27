@@ -180,24 +180,69 @@ export const LaporanInputJenisBencana = {
 } as const;
 
 export interface LaporanInput {
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
   judul: string;
   jenis_bencana: LaporanInputJenisBencana;
+  /**
+     * @minLength 1
+     * @maxLength 300
+     */
   lokasi: string;
-  /** @nullable */
+  /**
+     * @minimum -90
+     * @maximum 90
+     * @nullable
+     */
   koordinat_lat?: number | null;
-  /** @nullable */
+  /**
+     * @minimum -180
+     * @maximum 180
+     * @nullable
+     */
   koordinat_lng?: number | null;
+  /**
+     * @minLength 1
+     * @maxLength 5000
+     */
   deskripsi: string;
+  /**
+     * @minLength 1
+     * @maxLength 100
+     */
   nama_pelapor: string;
+  /**
+     * @minLength 6
+     * @maxLength 30
+     */
   kontak_pelapor: string;
-  /** @nullable */
+  /**
+     * @maxLength 100
+     * @nullable
+     */
   jabatan_pelapor?: string | null;
-  /** @nullable */
+  /**
+     * @minimum 0
+     * @maximum 1000000
+     * @nullable
+     */
   jumlah_terdampak?: number | null;
-  /** @nullable */
+  /**
+     * @maxLength 300
+     * @nullable
+     */
   lokasi_pengungsian?: string | null;
+  /**
+     * @maxItems 10
+     * @items.maxLength 500
+     */
   foto_urls?: string[];
-  /** @nullable */
+  /**
+     * @maxLength 500
+     * @nullable
+     */
   foto_ktp_url?: string | null;
 }
 
@@ -236,10 +281,25 @@ export const KebutuhanInputKategori = {
 
 export interface KebutuhanInput {
   kategori: KebutuhanInputKategori;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
   nama_item: string;
+  /**
+     * @minimum 1
+     * @maximum 1000000
+     */
   jumlah_dibutuhkan: number;
+  /**
+     * @minLength 1
+     * @maxLength 30
+     */
   satuan: string;
-  /** @nullable */
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
   keterangan?: string | null;
 }
 

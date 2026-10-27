@@ -13,3 +13,11 @@ if (!url || !serviceRoleKey) {
 export const supabase = createClient(url, serviceRoleKey);
 
 export const UPLOAD_BUCKET = "laporan-images";
+
+// Awalan URL publik hasil POST /uploads (lihat getPublicUrl di routes/uploads.ts).
+// Dipakai untuk menolak URL foto dari luar bucket kita di body laporan.
+const OWN_UPLOAD_PREFIX = `${url.replace(/\/$/, "")}/storage/v1/object/public/${UPLOAD_BUCKET}/laporan/`;
+
+export function isOwnUploadUrl(value: string): boolean {
+  return value.startsWith(OWN_UPLOAD_PREFIX) && !value.includes("..");
+}

@@ -686,39 +686,63 @@ components:
         jumlah_kebutuhan_pending:
           type: integer
 
+    # Dipakai POST /laporan yang publik (tanpa login) — semua batas di bawah
+    # sengaja ketat. URL foto juga dicek asal bucket-nya di route (butuh env).
     LaporanInput:
       type: object
       required: [judul, jenis_bencana, lokasi, deskripsi, nama_pelapor, kontak_pelapor]
       properties:
         judul:
           type: string
+          minLength: 1
+          maxLength: 200
         jenis_bencana:
           type: string
           enum: [banjir, gempa_bumi, tanah_longsor, kebakaran, angin_kencang, tsunami, lainnya]
         lokasi:
           type: string
+          minLength: 1
+          maxLength: 300
         koordinat_lat:
           type: ["number", "null"]
+          minimum: -90
+          maximum: 90
         koordinat_lng:
           type: ["number", "null"]
+          minimum: -180
+          maximum: 180
         deskripsi:
           type: string
+          minLength: 1
+          maxLength: 5000
         nama_pelapor:
           type: string
+          minLength: 1
+          maxLength: 100
         kontak_pelapor:
           type: string
+          minLength: 6
+          maxLength: 30
         jabatan_pelapor:
           type: ["string", "null"]
+          maxLength: 100
         jumlah_terdampak:
           type: ["integer", "null"]
+          minimum: 0
+          maximum: 1000000
+          multipleOf: 1
         lokasi_pengungsian:
           type: ["string", "null"]
+          maxLength: 300
         foto_urls:
           type: array
+          maxItems: 10
           items:
             type: string
+            maxLength: 500
         foto_ktp_url:
           type: ["string", "null"]
+          maxLength: 500
 
     LaporanUpdate:
       type: object
@@ -768,12 +792,20 @@ components:
           enum: [pangan, sandang, medis, tempat_tinggal, air_bersih, lainnya]
         nama_item:
           type: string
+          minLength: 1
+          maxLength: 120
         jumlah_dibutuhkan:
           type: integer
+          minimum: 1
+          maximum: 1000000
+          multipleOf: 1
         satuan:
           type: string
+          minLength: 1
+          maxLength: 30
         keterangan:
           type: ["string", "null"]
+          maxLength: 1000
 
     KebutuhanUpdate:
       type: object

@@ -61,20 +61,53 @@ export const GetLaporanResponse = zod.array(GetLaporanResponseItem)
 /**
  * @summary Buat laporan bencana baru
  */
+export const createLaporanBodyJudulMax = 200;
+
+export const createLaporanBodyLokasiMax = 300;
+
+export const createLaporanBodyKoordinatLatMin = -90;
+export const createLaporanBodyKoordinatLatMax = 90;
+
+export const createLaporanBodyKoordinatLngMin = -180;
+export const createLaporanBodyKoordinatLngMax = 180;
+
+export const createLaporanBodyDeskripsiMax = 5000;
+
+export const createLaporanBodyNamaPelaporMax = 100;
+
+export const createLaporanBodyKontakPelaporMin = 6;
+export const createLaporanBodyKontakPelaporMax = 30;
+
+export const createLaporanBodyJabatanPelaporMax = 100;
+
+export const createLaporanBodyJumlahTerdampakMin = 0;
+export const createLaporanBodyJumlahTerdampakMax = 1000000;
+export const createLaporanBodyJumlahTerdampakMultipleOf = 1;
+
+export const createLaporanBodyLokasiPengungsianMax = 300;
+
+export const createLaporanBodyFotoUrlsItemMax = 500;
+
+export const createLaporanBodyFotoUrlsMax = 10;
+
+export const createLaporanBodyFotoKtpUrlMax = 500;
+
+
+
 export const CreateLaporanBody = zod.object({
-  "judul": zod.string(),
+  "judul": zod.string().min(1).max(createLaporanBodyJudulMax),
   "jenis_bencana": zod.enum(['banjir', 'gempa_bumi', 'tanah_longsor', 'kebakaran', 'angin_kencang', 'tsunami', 'lainnya']),
-  "lokasi": zod.string(),
-  "koordinat_lat": zod.number().nullish(),
-  "koordinat_lng": zod.number().nullish(),
-  "deskripsi": zod.string(),
-  "nama_pelapor": zod.string(),
-  "kontak_pelapor": zod.string(),
-  "jabatan_pelapor": zod.string().nullish(),
-  "jumlah_terdampak": zod.number().nullish(),
-  "lokasi_pengungsian": zod.string().nullish(),
-  "foto_urls": zod.array(zod.string()).optional(),
-  "foto_ktp_url": zod.string().nullish()
+  "lokasi": zod.string().min(1).max(createLaporanBodyLokasiMax),
+  "koordinat_lat": zod.number().min(createLaporanBodyKoordinatLatMin).max(createLaporanBodyKoordinatLatMax).nullish(),
+  "koordinat_lng": zod.number().min(createLaporanBodyKoordinatLngMin).max(createLaporanBodyKoordinatLngMax).nullish(),
+  "deskripsi": zod.string().min(1).max(createLaporanBodyDeskripsiMax),
+  "nama_pelapor": zod.string().min(1).max(createLaporanBodyNamaPelaporMax),
+  "kontak_pelapor": zod.string().min(createLaporanBodyKontakPelaporMin).max(createLaporanBodyKontakPelaporMax),
+  "jabatan_pelapor": zod.string().max(createLaporanBodyJabatanPelaporMax).nullish(),
+  "jumlah_terdampak": zod.number().min(createLaporanBodyJumlahTerdampakMin).max(createLaporanBodyJumlahTerdampakMax).multipleOf(createLaporanBodyJumlahTerdampakMultipleOf).nullish(),
+  "lokasi_pengungsian": zod.string().max(createLaporanBodyLokasiPengungsianMax).nullish(),
+  "foto_urls": zod.array(zod.string().max(createLaporanBodyFotoUrlsItemMax)).max(createLaporanBodyFotoUrlsMax).optional(),
+  "foto_ktp_url": zod.string().max(createLaporanBodyFotoKtpUrlMax).nullish()
 })
 
 export const CreateLaporanResponse = zod.object({
@@ -223,12 +256,23 @@ export const CreateKebutuhanParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const createKebutuhanBodyNamaItemMax = 120;
+
+export const createKebutuhanBodyJumlahDibutuhkanMax = 1000000;
+export const createKebutuhanBodyJumlahDibutuhkanMultipleOf = 1;
+
+export const createKebutuhanBodySatuanMax = 30;
+
+export const createKebutuhanBodyKeteranganMax = 1000;
+
+
+
 export const CreateKebutuhanBody = zod.object({
   "kategori": zod.enum(['pangan', 'sandang', 'medis', 'tempat_tinggal', 'air_bersih', 'lainnya']),
-  "nama_item": zod.string(),
-  "jumlah_dibutuhkan": zod.number(),
-  "satuan": zod.string(),
-  "keterangan": zod.string().nullish()
+  "nama_item": zod.string().min(1).max(createKebutuhanBodyNamaItemMax),
+  "jumlah_dibutuhkan": zod.number().min(1).max(createKebutuhanBodyJumlahDibutuhkanMax).multipleOf(createKebutuhanBodyJumlahDibutuhkanMultipleOf),
+  "satuan": zod.string().min(1).max(createKebutuhanBodySatuanMax),
+  "keterangan": zod.string().max(createKebutuhanBodyKeteranganMax).nullish()
 })
 
 export const CreateKebutuhanResponse = zod.object({

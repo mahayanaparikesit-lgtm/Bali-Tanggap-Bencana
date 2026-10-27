@@ -9,9 +9,24 @@ import type { KebutuhanInputKategori } from './kebutuhanInputKategori';
 
 export interface KebutuhanInput {
   kategori: KebutuhanInputKategori;
+  /**
+     * @minLength 1
+     * @maxLength 120
+     */
   nama_item: string;
+  /**
+     * @minimum 1
+     * @maximum 1000000
+     */
   jumlah_dibutuhkan: number;
+  /**
+     * @minLength 1
+     * @maxLength 30
+     */
   satuan: string;
-  /** @nullable */
+  /**
+     * @maxLength 1000
+     * @nullable
+     */
   keterangan?: string | null;
 }
