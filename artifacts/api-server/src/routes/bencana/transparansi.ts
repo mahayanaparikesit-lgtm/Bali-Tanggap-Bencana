@@ -55,38 +55,13 @@ router.get("/transparansi/laporan", async (req, res) => {
       kebutuhan: kebutuhanMap[l.id] || [],
       relawan_bertugas: relawanNama,
       donasi: (donasiMap[l.id] || []).map(publicDonasi),
-      foto_penyerahan: FOTO_DUMMY.filter(f => f.laporan_id === l.id),
+      // Belum ada sumber data foto serah terima — dulu diisi foto Unsplash
+      // karangan. Kosong sampai fitur Distribusi (bukti nyata) dibuat.
+      foto_penyerahan: [],
     };
   });
 
   return res.json(result);
 });
-
-const FOTO_DUMMY = [
-  {
-    laporan_id: 1,
-    url: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800",
-    keterangan: "Distribusi sembako kepada pengungsi banjir Ubud",
-    tanggal: "2026-06-27",
-  },
-  {
-    laporan_id: 1,
-    url: "https://images.unsplash.com/photo-1469571486292-0ba58a3f068b?w=800",
-    keterangan: "Relawan mendirikan tenda pengungsian di Balai Banjar",
-    tanggal: "2026-06-27",
-  },
-  {
-    laporan_id: 2,
-    url: "https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800",
-    keterangan: "Tim SAR melakukan evakuasi korban longsor Kintamani",
-    tanggal: "2026-06-27",
-  },
-  {
-    laporan_id: 3,
-    url: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800",
-    keterangan: "Bantuan alat masak diserahkan ke pedagang korban kebakaran Tabanan",
-    tanggal: "2026-06-27",
-  },
-];
 
 export default router;

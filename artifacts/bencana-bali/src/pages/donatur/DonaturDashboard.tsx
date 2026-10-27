@@ -214,6 +214,9 @@ function DetailModal({ bencana, open, onClose }: { bencana: any; open: boolean; 
           {/* Tab: Posko */}
           {tab === "posko" && (
             <div className="space-y-3">
+              {!bencana.posko?.length && (
+                <p className="text-sm text-text2">Belum ada data posko untuk lokasi ini.</p>
+              )}
               {bencana.posko?.map((p: any, i: number) => (
                 <div key={i} className="border border-border rounded-[10px] p-4">
                   <p className="font-semibold text-sm mb-1">{p.nama}</p>
@@ -517,6 +520,9 @@ function DonasiModal({ bencana, open, onClose, onSuccess }: {
                 <Building2 className="h-4 w-4" /> Antarkan ke Posko Terdekat
               </p>
               <div className="space-y-2">
+                {!bencana?.posko?.length && (
+                  <p className="text-xs text-text2">Belum ada data posko untuk lokasi ini.</p>
+                )}
                 {bencana?.posko?.slice(0, 2).map((p: any, i: number) => (
                   <div key={i} className="bg-card rounded-[8px] p-3 border border-border">
                     <p className="font-semibold text-xs">{p.nama}</p>

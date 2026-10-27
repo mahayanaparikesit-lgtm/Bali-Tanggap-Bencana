@@ -52,6 +52,9 @@ export default function MetodePenyerahan() {
               <Text style={styles.poskoContact}>{posko.kontak}</Text>
             </View>
           )}
+          {state.handoverMethod === "antar" && !posko && aktifList && (
+            <Text style={styles.poskoAddr}>Belum ada data posko untuk lokasi ini.</Text>
+          )}
         </Pressable>
 
         <Pressable

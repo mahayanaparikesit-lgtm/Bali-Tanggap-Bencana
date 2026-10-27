@@ -11,13 +11,6 @@ const router = Router();
 
 const publicDonasiSchema = insertDonasiSchema.omit({ user_id: true });
 
-const POSKO_UTAMA = [
-  { nama: "Posko Utama BPBD Bali", alamat: "Jl. D.I. Panjaitan No.5, Renon, Denpasar Selatan", kontak: "0361-222666", kota: "Denpasar" },
-  { nama: "Posko Relawan Gianyar", alamat: "Jl. Ngurah Rai No.12, Gianyar", kontak: "0361-943111", kota: "Gianyar" },
-  { nama: "Posko Bangli", alamat: "Jl. Brigjen Ngurah Rai No.2, Bangli", kontak: "0366-91016", kota: "Bangli" },
-  { nama: "Posko Tabanan", alamat: "Jl. Pahlawan No.1, Tabanan", kontak: "0361-811410", kota: "Tabanan" },
-];
-
 router.get("/donatur/bencana-aktif", requireAuth, async (req, res) => {
   // Hanya tampilkan laporan yang sudah diverifikasi admin
   const rows = await db
@@ -72,7 +65,9 @@ router.get("/donatur/bencana-aktif", requireAuth, async (req, res) => {
     ...publicLaporan(r),
     kebutuhan: kebutuhanByLaporan[r.id] || [],
     koordinator: koordinatorMap[r.id] || null,
-    posko: POSKO_UTAMA,
+    // Belum ada tabel posko — daftar lama ditulis langsung di kode dan tampil
+    // seolah data resmi. Kosong sampai posko dikelola admin.
+    posko: [],
     total_dana_terkumpul: danaTerkumpulMap[r.id] || 0,
   }));
 
