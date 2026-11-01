@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -11,6 +11,13 @@ export const donasiTable = pgTable("donasi", {
   nama_barang: text("nama_barang"),
   jumlah_barang: integer("jumlah_barang"),
   nama_donatur: text("nama_donatur").notNull(),
+  // Pilihan donatur sendiri: tampilkan nama di halaman publik atau "Anonim".
+  // Default false — donasi lama dibuat sebelum pilihan ini ada, jadi tidak
+  // pernah menyetujui namanya tampil.
+  tampilkan_nama: boolean("tampilkan_nama").notNull().default(false),
+  // Kebutuhan yang diisi donasi barang — progres kebutuhan baru bertambah saat
+  // admin menerima donasi (PATCH /donasi/:id), bukan saat dikirim.
+  kebutuhan_id: integer("kebutuhan_id"),
   kontak_donatur: text("kontak_donatur"),
   pesan: text("pesan"),
   bukti_transfer_url: text("bukti_transfer_url"),

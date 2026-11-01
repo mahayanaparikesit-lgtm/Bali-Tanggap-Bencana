@@ -33,6 +33,7 @@ export default function FormDonasiBarang() {
 
   const [qty, setQty] = useState<Record<number, number>>({});
   const [donorName, setDonorName] = useState(state.donorName || user?.nama || "");
+  const [anonymous, setAnonymous] = useState(state.anonymous);
   const [note, setNote] = useState(state.note);
 
   const toggle = (k: Kebutuhan) => {
@@ -58,8 +59,8 @@ export default function FormDonasiBarang() {
 
   const handleContinue = () => {
     if (!canContinue) return;
-    const items: BarangItem[] = selectedItems.map(k => ({ namaItem: k.nama_item, jumlah: qty[k.id] }));
-    update({ locationId, donationType: "barang", items, donorName: donorName.trim(), note });
+    const items: BarangItem[] = selectedItems.map(k => ({ kebutuhanId: k.id, namaItem: k.nama_item, jumlah: qty[k.id] }));
+    update({ locationId, donationType: "barang", items, donorName: donorName.trim(), anonymous, note });
     router.push(`/donatur/lokasi/${locationId}/penyerahan` as any);
   };
 
@@ -111,6 +112,12 @@ export default function FormDonasiBarang() {
         <View style={{ gap: 9 }}>
           <Text style={styles.label}>Nama donatur</Text>
           <TextInput style={styles.input} value={donorName} onChangeText={setDonorName} placeholder="Nama Anda" />
+          <Pressable style={styles.toggleRow} onPress={() => setAnonymous(a => !a)}>
+            <Text style={styles.toggleLabel}>Donasi sebagai anonim</Text>
+            <View style={[styles.switchTrack, anonymous && styles.switchTrackOn]}>
+              <View style={[styles.switchThumb, anonymous && styles.switchThumbOn]} />
+            </View>
+          </Pressable>
         </View>
 
         <View style={{ gap: 9 }}>
@@ -167,4 +174,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface, paddingHorizontal: 15, fontSize: 15, color: colors.text, fontFamily: fonts.sans,
   },
   textarea: { minHeight: 80, textAlignVertical: "top", paddingTop: 14, lineHeight: 20 },
+  toggleRow: {
+    minHeight: 52, flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 15,
+  },
+  toggleLabel: { flex: 1, fontSize: 14.5, color: colors.text, fontFamily: fonts.sans },
+  switchTrack: {
+    width: 50, height: 30, borderRadius: 999, backgroundColor: colors.surface2,
+    borderWidth: 1, borderColor: colors.borderStrong, padding: 3, justifyContent: "center",
+  },
+  switchTrackOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  switchThumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.borderStrong },
+  switchThumbOn: { alignSelf: "flex-end", borderColor: colors.primary },
 });

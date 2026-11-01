@@ -35,7 +35,9 @@ export default function RingkasanUang() {
           laporan_id: locationId,
           jenis: "dana",
           jumlah_dana: state.amount,
-          nama_donatur: state.anonymous ? "Hamba Allah" : state.donorName,
+          // Nama asli tetap disimpan (untuk admin); tampil di publik hanya bila tidak anonim.
+          nama_donatur: state.donorName.trim() || "Anonim",
+          tampilkan_nama: !state.anonymous,
           pesan: state.note || null,
         }),
       });

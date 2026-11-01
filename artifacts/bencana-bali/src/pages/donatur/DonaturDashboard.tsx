@@ -240,6 +240,7 @@ function DetailModal({ bencana, open, onClose }: { bencana: any; open: boolean; 
 
 type DonasiForm = {
   namaDonatur: string;
+  anonim: boolean;
   kontakDonatur: string;
   nominalPilihan: number | null;
   nominalCustom: string;
@@ -255,6 +256,7 @@ type DonasiForm = {
 function emptyForm(namaDonatur: string): DonasiForm {
   return {
     namaDonatur,
+    anonim: false,
     kontakDonatur: "",
     nominalPilihan: null,
     nominalCustom: "",
@@ -339,6 +341,8 @@ function DonasiModal({ bencana, open, onClose, onSuccess }: {
         laporan_id: bencana?.id,
         jenis: donasiJenis,
         nama_donatur: form.namaDonatur.trim(),
+        // Nama asli tetap disimpan untuk admin; publik hanya melihatnya bila tidak anonim.
+        tampilkan_nama: !form.anonim,
         kontak_donatur: form.kontakDonatur.trim(),
       };
       if (donasiJenis === "dana") {
@@ -437,6 +441,10 @@ function DonasiModal({ bencana, open, onClose, onSuccess }: {
                 onChange={e => set("namaDonatur", e.target.value)}
                 className={cn("mt-1", errors.namaDonatur && "border-destructive")} />
               <FieldError message={errors.namaDonatur} />
+              <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-sm">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" checked={form.anonim} onChange={e => set("anonim", e.target.checked)} />
+                <span>Donasi sebagai anonim<span className="block text-xs text-text2">Nama Anda hanya dilihat admin; di halaman transparansi tampil "Anonim".</span></span>
+              </label>
             </div>
             <div>
               <Label htmlFor="kontak_donatur">No. HP / WhatsApp *</Label>
@@ -589,6 +597,10 @@ function DonasiModal({ bencana, open, onClose, onSuccess }: {
                 onChange={e => set("namaDonatur", e.target.value)}
                 className={cn("mt-1", errors.namaDonatur && "border-destructive")} />
               <FieldError message={errors.namaDonatur} />
+              <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-sm">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" checked={form.anonim} onChange={e => set("anonim", e.target.checked)} />
+                <span>Donasi sebagai anonim<span className="block text-xs text-text2">Nama Anda hanya dilihat admin; di halaman transparansi tampil "Anonim".</span></span>
+              </label>
             </div>
             <div>
               <Label htmlFor="kontak_donatur_barang">No. HP / WhatsApp *</Label>

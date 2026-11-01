@@ -7,6 +7,7 @@ import { createContext, useContext, useState, ReactNode } from "react";
 export type DonationType = "uang" | "barang" | null;
 
 export interface BarangItem {
+  kebutuhanId: number;
   namaItem: string;
   jumlah: number;
 }

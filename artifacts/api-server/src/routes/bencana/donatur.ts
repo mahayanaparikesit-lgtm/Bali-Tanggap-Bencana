@@ -100,17 +100,14 @@ router.post("/donasi", requireAuth, donasiLimiter, async (req, res) => {
     }
   }
 
+  // kebutuhan_id hanya disimpan untuk donasi barang. Progres kebutuhan TIDAK
+  // ditambah di sini — baru saat admin menerima donasi (PATCH di bawah), sama
+  // seperti dana yang baru dihitung setelah diterima.
   const [row] = await db.insert(donasiTable).values({
     ...data,
+    kebutuhan_id: data.jenis === "barang" ? kebutuhan_id ?? null : null,
     user_id: auth?.userId ?? null,
   }).returning();
-
-  // Jika donasi barang terkait kebutuhan tertentu, tambah jumlah_terpenuhi
-  if (kebutuhan_id && data.jumlah_barang && data.jenis === "barang") {
-    await db.update(kebutuhanTable)
-      .set({ jumlah_terpenuhi: sql`jumlah_terpenuhi + ${data.jumlah_barang}` })
-      .where(eq(kebutuhanTable.id, kebutuhan_id));
-  }
 
   return res.status(201).json(row);
 });
@@ -130,10 +127,26 @@ router.patch("/donasi/:id", requireRole(["admin"]), async (req, res) => {
     return res.status(400).json({ message: "Data tidak valid", errors: result.error.flatten() });
   }
 
-  const [updated] = await db.update(donasiTable)
-    .set({ status: result.data.status })
-    .where(eq(donasiTable.id, id))
-    .returning();
+  const status = result.data.status;
+  const updated = await db.transaction(async tx => {
+    const [lama] = await tx.select().from(donasiTable).where(eq(donasiTable.id, id)).for("update");
+    if (!lama) return null;
+    const [baru] = await tx.update(donasiTable).set({ status }).where(eq(donasiTable.id, id)).returning();
+
+    // Progres kebutuhan mengikuti status "diterima": bertambah saat donasi
+    // barang diterima, berkurang lagi bila yang sudah diterima diubah statusnya.
+    // Donasi lama (kebutuhan_id null) sudah dihitung saat dikirim — tidak disentuh.
+    if (lama.jenis === "barang" && lama.kebutuhan_id && lama.jumlah_barang) {
+      const delta = lama.status !== "diterima" && status === "diterima" ? lama.jumlah_barang
+        : lama.status === "diterima" && status !== "diterima" ? -lama.jumlah_barang : 0;
+      if (delta) {
+        await tx.update(kebutuhanTable)
+          .set({ jumlah_terpenuhi: sql`greatest(0, jumlah_terpenuhi + ${delta})` })
+          .where(eq(kebutuhanTable.id, lama.kebutuhan_id));
+      }
+    }
+    return baru;
+  });
 
   if (!updated) return res.status(404).json({ message: "Donasi tidak ditemukan" });
   return res.json(updated);

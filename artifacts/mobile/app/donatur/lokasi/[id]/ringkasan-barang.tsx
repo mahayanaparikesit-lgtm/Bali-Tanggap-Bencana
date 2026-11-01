@@ -45,7 +45,10 @@ export default function RingkasanBarang() {
             jenis: "barang",
             nama_barang: item.namaItem,
             jumlah_barang: item.jumlah,
-            nama_donatur: state.donorName,
+            nama_donatur: state.donorName.trim() || "Anonim",
+            tampilkan_nama: !state.anonymous,
+            // Progres kebutuhan baru bertambah setelah admin menerima donasi ini.
+            kebutuhan_id: item.kebutuhanId,
             pesan: state.note || null,
           }),
         });
