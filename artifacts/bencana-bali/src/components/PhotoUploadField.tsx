@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Loader2, X, Camera } from "lucide-react";
+import { Loader2, X, Camera, Plus } from "lucide-react";
 import { uploadFiles, UploadError } from "@/lib/upload";
 import { cn } from "@/lib/utils";
 
@@ -46,36 +46,54 @@ export function PhotoUploadField({
 
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium">{label}</label>
-      <div className="flex flex-wrap gap-2">
-        {urls.map((url, i) => (
-          <div key={url} className="group relative h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-border">
-            <img src={url} alt="" className="h-full w-full object-cover" />
+      <label className="mb-2 block text-sm font-bold">{label}</label>
+      {urls.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className={cn(
+            "flex w-full items-center gap-4 rounded-2xl border-[1.5px] border-dashed border-border-strong bg-card px-4 py-4 text-left transition hover:border-primary hover:bg-primary-soft",
+            uploading && "opacity-60",
+          )}
+        >
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-primary text-primary-foreground">
+            {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}
+          </span>
+          <span className="min-w-0">
+            <b className="block text-[14.5px]">{uploading ? "Mengunggah…" : "Ambil atau pilih foto"}</b>
+            <small className="text-xs text-text2">Kamera di ponsel, atau pilih dari galeri / berkas</small>
+          </span>
+        </button>
+      ) : (
+        <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4">
+          {urls.map((url, i) => (
+            <div key={url} className="relative aspect-square overflow-hidden rounded-2xl border border-border">
+              <img src={url} alt="" className="h-full w-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removeAt(i)}
+                className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white"
+                aria-label="Hapus foto"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+          {urls.length < maxFiles && (
             <button
               type="button"
-              onClick={() => removeAt(i)}
-              className="absolute right-1 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100"
-              aria-label="Hapus foto"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading}
+              className="flex aspect-square flex-col items-center justify-center gap-1 rounded-2xl border-[1.5px] border-dashed border-border-strong text-text2 hover:border-primary hover:text-foreground"
+              aria-label="Tambah foto"
             >
-              <X className="h-3 w-3" />
+              {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Plus className="h-5 w-5" />}
+              <span className="text-xs font-semibold">{uploading ? "Mengunggah…" : "Tambah"}</span>
             </button>
-          </div>
-        ))}
-        {urls.length < maxFiles && (
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={uploading}
-            className={cn(
-              "flex h-20 w-20 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-border-strong text-text2 hover:border-primary hover:text-primary",
-              uploading && "opacity-60",
-            )}
-          >
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
-            <span className="text-[10px] font-semibold">{uploading ? "Mengunggah…" : "Tambah"}</span>
-          </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
       <input
         ref={inputRef}
         type="file"

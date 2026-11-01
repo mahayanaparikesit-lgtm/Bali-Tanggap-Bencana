@@ -4,11 +4,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getGetLaporanQueryKey, getGetLaporanSayaQueryKey } from "@workspace/api-client-react";
 import {
   ArrowRight, Beef, Check, ChevronLeft, Construction, HeartPulse, History, House, Info, LifeBuoy,
-  LocateFixed, Minus, Eye, PhoneCall, Plus, RefreshCw, Send, ShieldCheck, Siren, Tent, Utensils, WifiOff, X, ZapOff,
+  LocateFixed, Minus, Eye, Activity, CircleEllipsis, CloudRain, Flame, Mountain, Waves, Wind, PhoneCall, Plus, RefreshCw, Send, ShieldCheck, Siren, Tent, Utensils, WifiOff, X, ZapOff,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Brand } from "@/components/brand/Brand";
-import { FotoBencana } from "@/components/Ilustrasi";
 import { LokasiPicker, jarakMeter, type Titik } from "@/components/LokasiPicker";
 import { PhotoUploadField } from "@/components/PhotoUploadField";
 import { KtpUploadField } from "@/components/KtpUploadField";
@@ -33,6 +32,11 @@ const JENIS = [
   ["banjir", "Banjir"], ["tanah_longsor", "Tanah longsor"], ["angin_kencang", "Angin kencang"], ["gempa_bumi", "Gempa bumi"],
   ["kebakaran", "Kebakaran"], ["tsunami", "Tsunami / gelombang"], ["lainnya", "Lainnya"],
 ] as const;
+
+const IKON_JENIS: Record<string, typeof Waves> = {
+  banjir: CloudRain, tanah_longsor: Mountain, angin_kencang: Wind, gempa_bumi: Activity,
+  kebakaran: Flame, tsunami: Waves, lainnya: CircleEllipsis,
+};
 
 const BAHAYA = [
   { k: "jiwa", l: "Mengancam jiwa", d: "Ada orang dalam bahaya sekarang", ikon: Siren, warna: "bg-urgent text-white" },
@@ -306,15 +310,19 @@ export default function LaporanBaru() {
               {d.step === 1 && (
                 <section>
                   <Judul h="Apa yang terjadi?" p="Ketuk satu. Kalau tidak ada yang cocok, pilih Lainnya." />
-                  <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-                    {JENIS.map(([k, l]) => (
-                      <button key={k} onClick={() => ubah({ jenis: k })} aria-pressed={d.jenis === k}
-                        className={cn("relative overflow-hidden rounded-2xl border-2 bg-card text-left", d.jenis === k ? "border-primary ring-2 ring-primary" : "border-border")}>
-                        <FotoBencana jenis={k} label={false} className="h-[84px] w-full" />
-                        <b className="block px-3 pb-3 pt-2.5 text-[13.5px] font-extrabold">{l}</b>
-                        {d.jenis === k && <span className="absolute right-2 top-2 grid h-[26px] w-[26px] place-items-center rounded-full bg-primary text-marigold"><Check size={15} /></span>}
-                      </button>
-                    ))}
+                  <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                    {JENIS.map(([k, l]) => {
+                      const Ikon = IKON_JENIS[k], on = d.jenis === k;
+                      return (
+                        <button key={k} onClick={() => ubah({ jenis: k })} aria-pressed={on}
+                          className={cn("relative flex min-h-[108px] flex-col justify-between gap-3 rounded-2xl border-[1.5px] p-3.5 text-left transition",
+                            on ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-border-strong")}>
+                          <span className={cn("grid h-11 w-11 place-items-center rounded-xl transition", on ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}><Ikon size={22} /></span>
+                          <b className="text-[14px] font-bold leading-tight">{l}</b>
+                          {on && <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground"><Check size={14} /></span>}
+                        </button>
+                      );
+                    })}
                   </div>
                   {d.jenis === "lainnya" && (
                     <>
@@ -332,7 +340,7 @@ export default function LaporanBaru() {
                   <div className="space-y-2">
                     {BAHAYA.map(b => (
                       <button key={b.k} onClick={() => ubah({ bahaya: b.k })} aria-pressed={d.bahaya === b.k}
-                        className={cn("flex min-h-[58px] w-full items-center gap-3 rounded-[14px] border-2 bg-card px-3.5 py-3 text-left", d.bahaya === b.k ? "border-primary" : "border-border")}>
+                        className={cn("flex min-h-[64px] w-full items-center gap-3 rounded-2xl border-[1.5px] px-3.5 py-3 text-left transition", d.bahaya === b.k ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-border-strong")}>
                         <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", b.warna)}><b.ikon size={20} /></span>
                         <span className="min-w-0"><b className="block text-[14.5px] font-extrabold">{b.l}</b><small className="block text-xs text-text2">{b.d}</small></span>
                         <span className={cn("ml-auto h-[22px] w-[22px] shrink-0 rounded-full border-2 border-border-strong", d.bahaya === b.k && "border-[7px] border-primary")} />
@@ -383,12 +391,19 @@ export default function LaporanBaru() {
                     <PhotoUploadField label="Foto kejadian" urls={d.foto} onChange={u => ubah({ foto: u })} maxFiles={6} hint="Maks. 6 foto. Satu foto sudah cukup." />
                   </div>
                   <Label hint="pilih semua yang sesuai">Kondisi di lokasi</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {KONDISI.map(({ k, l, i: Ikon }) => (
-                      <Chip key={k} on={d.kondisi.includes(k)} onClick={() => setD(prev => ({ ...prev, disimpan: jam(), kondisi: prev.kondisi.includes(k) ? prev.kondisi.filter(x => x !== k) : [...prev.kondisi, k] }))}>
-                        <Ikon size={16} className={d.kondisi.includes(k) ? "text-marigold" : ""} />{l}
-                      </Chip>
-                    ))}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {KONDISI.map(({ k, l, i: Ikon }) => {
+                      const on = d.kondisi.includes(k);
+                      return (
+                        <button key={k} aria-pressed={on} onClick={() => setD(prev => ({ ...prev, disimpan: jam(), kondisi: prev.kondisi.includes(k) ? prev.kondisi.filter(x => x !== k) : [...prev.kondisi, k] }))}
+                          className={cn("flex min-h-[56px] items-center gap-2.5 rounded-2xl border-[1.5px] px-3 py-2.5 text-left transition",
+                            on ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-border-strong")}>
+                          <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", on ? "bg-primary text-primary-foreground" : "bg-muted")}><Ikon size={18} /></span>
+                          <span className="min-w-0 flex-1 text-[13.5px] font-bold leading-tight">{l}</span>
+                          {on && <Check size={16} className="shrink-0 text-primary" />}
+                        </button>
+                      );
+                    })}
                   </div>
                   {d.kondisi.includes("mengungsi") && (
                     <>
@@ -547,8 +562,9 @@ function Judul({ h, p }: { h: string; p: string }) {
 
 function Label({ children, hint, wajib }: { children: React.ReactNode; hint?: string; wajib?: boolean }) {
   return (
-    <div className="mb-2.5 mt-6 flex items-center justify-between gap-3 font-mono text-[11px] uppercase tracking-[0.1em] text-text2">
-      <span>{children}</span>{hint && <em className={cn("font-sans text-xs font-semibold normal-case not-italic tracking-normal", wajib && "text-urgent")}>{hint}</em>}
+    <div className="mb-2.5 mt-7 flex items-baseline justify-between gap-3">
+      <span className="text-[15px] font-extrabold tracking-[-0.01em]">{children}</span>
+      {hint && <em className={cn("text-xs font-semibold not-italic text-text2", wajib && "text-urgent")}>{hint}</em>}
     </div>
   );
 }
@@ -556,8 +572,9 @@ function Label({ children, hint, wajib }: { children: React.ReactNode; hint?: st
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button onClick={onClick} aria-pressed={on}
-      className={cn("inline-flex min-h-11 items-center gap-1.5 rounded-full border-[1.5px] px-3.5 py-2.5 text-[13px] font-bold", on ? "border-primary bg-primary text-primary-foreground" : "border-border-strong bg-card")}>
-      {children}
+      className={cn("inline-flex min-h-11 items-center gap-1.5 rounded-full border-[1.5px] px-4 py-2 text-[13.5px] font-bold transition",
+        on ? "border-primary bg-primary-soft text-primary" : "border-border bg-card text-text2 hover:border-border-strong hover:text-foreground")}>
+      {on && <Check size={15} />}{children}
     </button>
   );
 }
