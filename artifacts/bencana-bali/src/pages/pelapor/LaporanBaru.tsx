@@ -38,6 +38,12 @@ const IKON_JENIS: Record<string, typeof Waves> = {
   kebakaran: Flame, tsunami: Waves, lainnya: CircleEllipsis,
 };
 
+// Warna khas tiap jenis — ikon & sorotan saat dipilih.
+const WARNA_JENIS: Record<string, string> = {
+  banjir: "#2F6FB0", tanah_longsor: "#8A5A34", angin_kencang: "#2F8A84", gempa_bumi: "#B7791F",
+  kebakaran: "#D2461C", tsunami: "#1F7AA8", lainnya: "#6B675D",
+};
+
 const BAHAYA = [
   { k: "jiwa", l: "Mengancam jiwa", d: "Ada orang dalam bahaya sekarang", ikon: Siren, warna: "bg-urgent text-white" },
   { k: "serius", l: "Serius", d: "Rumah atau akses rusak, belum ada korban jiwa", ikon: House, warna: "bg-[#E7801C] text-white" },
@@ -257,7 +263,6 @@ export default function LaporanBaru() {
           </Link>
           <div className="min-w-0 flex-1 sm:text-center">
             <b className="block text-[15px] font-extrabold tracking-[-0.02em]">Lapor Bencana</b>
-            {fase.t === "isi" && <small className="block truncate font-mono text-[11px] text-text2">Langkah {d.step} dari 5 · {STEPS[d.step - 1]}</small>}
           </div>
           <span className={cn("inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border-[1.5px] px-2.5 py-1.5 text-[11.5px] font-bold",
             online ? "border-border-strong bg-card" : "border-status-wait-br bg-status-wait-bg text-status-wait-fg")}>
@@ -265,15 +270,41 @@ export default function LaporanBaru() {
           </span>
           <Link href={user ? "/pelapor" : "/"} className="hidden text-sm font-bold text-text2 hover:text-foreground hover:no-underline sm:block">Tutup</Link>
         </div>
-        {fase.t === "isi" && (
-          <div className="mx-auto grid max-w-[1100px] grid-cols-5 gap-1 px-4 pb-2.5 sm:px-6">
-            {[1, 2, 3, 4, 5].map(i => <i key={i} className={cn("h-[5px] rounded-full", i < d.step ? "bg-primary" : i === d.step ? "bg-urgent" : "bg-border")} />)}
-          </div>
-        )}
       </header>
 
-      <div className="mx-auto max-w-[1100px] px-4 pb-40 pt-6 sm:px-6">
-        <main className="mx-auto w-full max-w-[640px]">
+      {/* Pita langkah: judul tahap + stepper bernomor di atas latar ilustrasi. */}
+      {fase.t === "isi" && (
+        <section className="relative overflow-hidden bg-ink pb-24 pt-8 text-on-ink">
+          <img src={`${import.meta.env.BASE_URL}hero-bali.jpg`} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-[70%_60%] opacity-30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/40" />
+          <div className="relative mx-auto max-w-[880px] px-4 sm:px-6">
+            <span className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-marigold">Langkah {d.step} dari 5</span>
+            <h1 className="mt-1.5 text-[clamp(30px,4vw,44px)] font-extrabold leading-none tracking-[-0.045em] text-white">{STEPS[d.step - 1]}</h1>
+            <ol className="mt-7 grid grid-cols-5 gap-2">
+              {STEPS.map((nama, i) => {
+                const n = i + 1, selesai = n < d.step, kini = n === d.step;
+                return (
+                  <li key={nama}>
+                    <button onClick={() => selesai && pindah(n)} disabled={!selesai} className="group flex w-full flex-col items-start gap-2 text-left disabled:cursor-default">
+                      <span className="flex w-full items-center gap-2">
+                        <span className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-full font-mono text-sm font-semibold transition",
+                          selesai ? "bg-marigold text-ink" : kini ? "bg-white text-ink" : "border border-white/25 text-white/60")}>
+                          {selesai ? <Check size={16} /> : n}
+                        </span>
+                        <i className={cn("h-0.5 flex-1 rounded-full", n === 5 ? "invisible" : selesai ? "bg-marigold" : "bg-white/20")} />
+                      </span>
+                      <span className={cn("hidden text-[12.5px] font-bold sm:block", kini ? "text-white" : selesai ? "text-on-ink group-hover:text-white" : "text-white/50")}>{nama}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        </section>
+      )}
+
+      <div className={cn("relative mx-auto max-w-[880px] px-4 pb-40 sm:px-6", fase.t === "isi" ? "-mt-16" : "pt-8")}>
+        <main className={cn("mx-auto w-full", fase.t === "isi" ? "rounded-[28px] border border-border bg-card p-5 shadow-[0_30px_70px_-34px_rgba(28,40,22,.45)] sm:p-9" : "max-w-[640px]")}>
           {fase.t === "kirim" && (
             <Hasil ikon={<span className="h-10 w-10 animate-spin rounded-full border-4 border-border-strong border-t-primary" />} judul="Mengirim laporan…" teks="Mohon tunggu sebentar." />
           )}
@@ -312,14 +343,15 @@ export default function LaporanBaru() {
                   <Judul h="Apa yang terjadi?" p="Ketuk satu. Kalau tidak ada yang cocok, pilih Lainnya." />
                   <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                     {JENIS.map(([k, l]) => {
-                      const Ikon = IKON_JENIS[k], on = d.jenis === k;
+                      const Ikon = IKON_JENIS[k], on = d.jenis === k, w = WARNA_JENIS[k];
                       return (
                         <button key={k} onClick={() => ubah({ jenis: k })} aria-pressed={on}
-                          className={cn("relative flex min-h-[108px] flex-col justify-between gap-3 rounded-2xl border-[1.5px] p-3.5 text-left transition",
-                            on ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-border-strong")}>
-                          <span className={cn("grid h-11 w-11 place-items-center rounded-xl transition", on ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")}><Ikon size={22} /></span>
-                          <b className="text-[14px] font-bold leading-tight">{l}</b>
-                          {on && <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-primary text-primary-foreground"><Check size={14} /></span>}
+                          style={on ? { borderColor: w, background: `${w}14`, boxShadow: `0 0 0 1px ${w}` } : undefined}
+                          className={cn("relative flex min-h-[124px] flex-col justify-between gap-3 rounded-[20px] border-[1.5px] p-4 text-left transition hover:-translate-y-0.5",
+                            on ? "" : "border-border bg-background hover:border-border-strong")}>
+                          <span className="grid h-12 w-12 place-items-center rounded-2xl transition" style={on ? { background: w, color: "#fff" } : { background: `${w}1F`, color: w }}><Ikon size={24} /></span>
+                          <b className="text-[15px] font-extrabold leading-tight tracking-[-0.01em]">{l}</b>
+                          {on && <span className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full text-white" style={{ background: w }}><Check size={14} /></span>}
                         </button>
                       );
                     })}
@@ -340,7 +372,7 @@ export default function LaporanBaru() {
                   <div className="space-y-2">
                     {BAHAYA.map(b => (
                       <button key={b.k} onClick={() => ubah({ bahaya: b.k })} aria-pressed={d.bahaya === b.k}
-                        className={cn("flex min-h-[64px] w-full items-center gap-3 rounded-2xl border-[1.5px] px-3.5 py-3 text-left transition", d.bahaya === b.k ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-border-strong")}>
+                        className={cn("flex min-h-[64px] w-full items-center gap-3 rounded-2xl border-[1.5px] px-3.5 py-3 text-left transition", d.bahaya === b.k ? "border-primary bg-primary-soft" : "border-border bg-background hover:border-border-strong")}>
                         <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", b.warna)}><b.ikon size={20} /></span>
                         <span className="min-w-0"><b className="block text-[14.5px] font-extrabold">{b.l}</b><small className="block text-xs text-text2">{b.d}</small></span>
                         <span className={cn("ml-auto h-[22px] w-[22px] shrink-0 rounded-full border-2 border-border-strong", d.bahaya === b.k && "border-[7px] border-primary")} />
@@ -380,7 +412,7 @@ export default function LaporanBaru() {
                   <Label hint="opsional">Desa, banjar, atau patokan</Label>
                   <input className="h-[52px] w-full rounded-[14px] border-[1.5px] border-border-strong bg-card px-3.5 text-[14.5px] font-semibold outline-none focus:border-primary"
                     placeholder="Contoh: Banjar Kubu Kaja, dekat Pura Desa" value={d.detail} maxLength={200} onChange={e => ubah({ detail: e.target.value })} />
-                  {!d.titik && <Catatan icon={<Info size={15} />}>Tanpa titik peta, laporan tetap terkirim — hanya tidak muncul di peta publik.</Catatan>}
+                  {!d.titik && <Catatan icon={<Info size={15} />}>Tanpa titik peta, laporan tetap terkirim dan tampil di peta pada titik perkiraan (pusat kabupaten).</Catatan>}
                 </section>
               )}
 
@@ -397,7 +429,7 @@ export default function LaporanBaru() {
                       return (
                         <button key={k} aria-pressed={on} onClick={() => setD(prev => ({ ...prev, disimpan: jam(), kondisi: prev.kondisi.includes(k) ? prev.kondisi.filter(x => x !== k) : [...prev.kondisi, k] }))}
                           className={cn("flex min-h-[56px] items-center gap-2.5 rounded-2xl border-[1.5px] px-3 py-2.5 text-left transition",
-                            on ? "border-primary bg-primary-soft" : "border-border bg-card hover:border-border-strong")}>
+                            on ? "border-primary bg-primary-soft" : "border-border bg-background hover:border-border-strong")}>
                           <span className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl", on ? "bg-primary text-primary-foreground" : "bg-muted")}><Ikon size={18} /></span>
                           <span className="min-w-0 flex-1 text-[13.5px] font-bold leading-tight">{l}</span>
                           {on && <Check size={16} className="shrink-0 text-primary" />}
@@ -510,14 +542,14 @@ export default function LaporanBaru() {
 
       {fase.t === "isi" && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card">
-          <div className="mx-auto flex max-w-[640px] items-center gap-3 px-4 pb-4 pt-3">
+          <div className="mx-auto flex max-w-[880px] items-center gap-3 px-4 pb-4 pt-3 sm:px-6">
             <div className="hidden min-w-0 flex-1 text-xs text-text2 sm:block lg:max-w-none">
               {halangan ? <span className="flex items-center gap-1.5"><Info size={13} />{halangan}</span> : d.disimpan ? `Draf tersimpan otomatis · ${d.disimpan}` : "Draf tersimpan otomatis di perangkat"}
             </div>
             {d.step > 1 && (
               <button onClick={() => pindah(d.step - 1)} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl border-[1.5px] border-border-strong" aria-label="Langkah sebelumnya"><ChevronLeft size={22} /></button>
             )}
-            <div className="flex flex-1 flex-col sm:max-w-[320px]">
+            <div className="flex flex-1 flex-col sm:max-w-[340px]">
               <button onClick={lanjut} disabled={!!halangan}
                 className={cn("flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-extrabold disabled:bg-border-strong disabled:text-text2",
                   d.step === 5 ? "bg-urgent text-urgent-foreground" : "bg-primary text-primary-foreground")}>
@@ -557,7 +589,7 @@ function Terkirim({ id, d, total, user, onBaru }: { id: number; d: Draft; total:
 }
 
 function Judul({ h, p }: { h: string; p: string }) {
-  return (<><h1 className="text-[26px] font-extrabold leading-[1.08] tracking-[-0.04em] sm:text-[30px]">{h}</h1><p className="mt-1.5 text-sm text-text2">{p}</p></>);
+  return (<><h2 className="text-[24px] font-extrabold leading-[1.1] tracking-[-0.035em] sm:text-[28px]">{h}</h2><p className="mt-1.5 text-[14.5px] text-text2">{p}</p></>);
 }
 
 function Label({ children, hint, wajib }: { children: React.ReactNode; hint?: string; wajib?: boolean }) {
