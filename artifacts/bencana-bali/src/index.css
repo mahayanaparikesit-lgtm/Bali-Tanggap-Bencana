@@ -131,11 +131,11 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE — redesign 2026 (lihat redesign/index.html di folder induk & PRD v3 § 5.1).
-   Menggantikan palet handoff lama yang memakai merah sebagai warna aksi utama:
-   sekarang aksi = navy "ink", merah (--urgent / --destructive) khusus urgensi.
-   Latar hangat "paper" (batu paras), aksen marigold (bunga canang). Token status
-   (--status-*) TIDAK berubah — tetap warna + bentuk ikon + label. */
+/* LIGHT MODE — warna diambil dari ilustrasi hero (public/hero-bali.jpg): krem
+   langit senja untuk latar, hijau hutan untuk aksi & panel gelap (--ink),
+   kuning matahari (--marigold) sebagai aksen. Merah (--urgent/--destructive)
+   tetap khusus urgensi. Mode gelap (.dark) memakai palet navy. Token status
+   (--status-*) tidak berubah. */
 :root {
   --button-outline: rgba(14,27,46, .12);
   --badge-outline: rgba(14,27,46, .06);
@@ -143,36 +143,36 @@
   --elevate-1: rgba(14,27,46, .03);
   --elevate-2: rgba(14,27,46, .08);
 
-  --background: 42 35% 93%;
-  --foreground: 218 22% 10%;
-  --border: 41 27% 82%;
-  --border-strong: hsl(41 23% 75%);
-  --card: 43 100% 99%;
-  --card-foreground: 218 22% 10%;
-  --card-border: 41 27% 82%;
-  --sidebar: 43 100% 99%;
-  --sidebar-foreground: 218 22% 10%;
-  --sidebar-border: 41 27% 82%;
-  --sidebar-primary: 216 53% 12%;
+  --background: 40 100% 95%;
+  --foreground: 102 21% 15%;
+  --border: 42 66% 80%;
+  --border-strong: hsl(41 56% 69%);
+  --card: 43 100% 98%;
+  --card-foreground: 102 21% 15%;
+  --card-border: 42 66% 80%;
+  --sidebar: 43 100% 98%;
+  --sidebar-foreground: 102 21% 15%;
+  --sidebar-border: 42 66% 80%;
+  --sidebar-primary: 105 32% 22%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 42 32% 88%;
-  --sidebar-accent-foreground: 218 22% 10%;
-  --sidebar-ring: 216 53% 12%;
-  --popover: 43 100% 99%;
-  --popover-foreground: 218 22% 10%;
-  --popover-border: 41 27% 82%;
-  --primary: 216 53% 12%;
+  --sidebar-accent: 41 87% 88%;
+  --sidebar-accent-foreground: 102 21% 15%;
+  --sidebar-ring: 105 32% 22%;
+  --popover: 43 100% 98%;
+  --popover-foreground: 102 21% 15%;
+  --popover-border: 42 66% 80%;
+  --primary: 105 32% 22%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: hsl(216 46% 19%);
-  --primary-soft: hsl(216 40% 93%);
-  --secondary: 42 32% 88%;
-  --secondary-foreground: 218 22% 10%;
-  --muted: 42 32% 88%;
-  --muted-foreground: 43 7% 39%;
-  --text3: hsl(43 6% 48%);
+  --primary-hover: hsl(104 31% 28%);
+  --primary-soft: hsl(100 30% 90%);
+  --secondary: 41 87% 88%;
+  --secondary-foreground: 102 21% 15%;
+  --muted: 41 87% 88%;
+  --muted-foreground: 50 19% 33%;
+  --text3: hsl(48 14% 44%);
   --accent: 42 90% 56%;
-  --accent-foreground: 216 53% 12%;
-  --accent-ink: hsl(38 90% 28%);
+  --accent-foreground: 105 32% 15%;
+  --accent-ink: hsl(36 90% 28%);
   --destructive: 3 76% 47%;
   --destructive-foreground: 0 0% 100%;
   --urgent: 3 76% 47%;
@@ -180,14 +180,14 @@
   --urgent-hover: hsl(3 76% 40%);
   --urgent-soft: hsl(5 80% 93%);
   --marigold: 42 90% 56%;
-  --ink: 216 53% 12%;
-  --ink-2: 216 46% 19%;
-  --ink-line: 216 34% 25%;
-  --on-ink: 220 30% 92%;
-  --on-ink-2: 218 18% 64%;
-  --input: 41 23% 75%;
-  --ring: 216 53% 12%;
-  --chart-1: 216 53% 12%;
+  --ink: 104 27% 15%;
+  --ink-2: 104 24% 21%;
+  --ink-line: 100 18% 28%;
+  --on-ink: 45 60% 92%;
+  --on-ink-2: 60 15% 70%;
+  --input: 41 56% 69%;
+  --ring: 105 32% 22%;
+  --chart-1: 105 32% 22%;
   --chart-2: 42 90% 46%;
   --chart-3: 210 80% 36%;
   --chart-4: 155 55% 26%;
@@ -214,11 +214,11 @@
   --tracking-normal: 0em;
   --spacing: 0.25rem;
 
-  --sidebar-primary-border: hsl(216 46% 19%);
-  --sidebar-accent-border: hsl(41 27% 82%);
-  --primary-border: hsl(216 46% 19%);
-  --secondary-border: hsl(41 23% 75%);
-  --muted-border: hsl(41 27% 82%);
+  --sidebar-primary-border: hsl(104 31% 28%);
+  --sidebar-accent-border: hsl(42 66% 80%);
+  --primary-border: hsl(104 31% 28%);
+  --secondary-border: hsl(41 56% 69%);
+  --muted-border: hsl(42 66% 80%);
   --accent-border: hsl(42 90% 46%);
   --destructive-border: hsl(3 76% 40%);
 }

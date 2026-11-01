@@ -2,15 +2,14 @@ import type { ReactNode } from "react";
 import { Link } from "wouter";
 import { TriangleAlert } from "lucide-react";
 import { Brand, Seismo } from "@/components/brand/Brand";
-import { Ilustrasi } from "@/components/Ilustrasi";
 
 // Kerangka halaman Masuk / Daftar — panel ilustrasi di kiri (desktop), form di kanan.
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-[1fr_1.05fr]">
       <aside className="relative hidden overflow-hidden bg-ink lg:block">
-        <Ilustrasi adegan="hero" className="absolute inset-0 h-full w-full" />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(14,27,46,.15)_0%,rgba(14,27,46,.75)_100%)]" />
+        <img src={`${import.meta.env.BASE_URL}hero-bali.jpg`} alt="" className="absolute inset-0 h-full w-full object-cover object-[68%_center]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(28,40,22,.1)_0%,rgba(28,40,22,.78)_100%)]" />
         <div className="absolute inset-x-10 bottom-10 text-white">
           <h2 className="text-[64px] font-extrabold leading-[0.85] tracking-[-0.06em]">Bali<br /><span className="text-marigold">bangkit bersama.</span></h2>
           <Seismo className="mt-4 h-7 w-[150px] text-marigold" />

@@ -8,13 +8,16 @@ import { useAuth } from "@/context/AuthContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReportDetailOverlay } from "@/components/ReportDetailOverlay";
 import { DisasterMap } from "@/components/DisasterMap";
-import { FotoBencana, Ilustrasi } from "@/components/Ilustrasi";
+import { FotoBencana } from "@/components/Ilustrasi";
 import { Eyebrow, Seismo } from "@/components/brand/Brand";
 import { MobileActionBar, PublicFooter, PublicHeader, UtilityStrip, dashboardHref } from "@/components/public/PublicShell";
 import { formatRupiahRingkas, formatWaktu, JENIS_LABELS } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 const BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
+
+// Laporan yang baru disetujui admin muncul di peta & daftar tanpa muat ulang manual.
+const SEGAR = { refetchInterval: 60_000, refetchOnWindowFocus: true } as const;
 
 async function fetchJson(path: string) {
   const res = await fetch(`${BASE}${path}`);
@@ -97,9 +100,9 @@ export default function Home() {
   const [filter, setFilter] = useState("semua");
   const [faqOpen, setFaqOpen] = useState(0);
 
-  const { data: aktifList } = useQuery({ queryKey: ["laporan-aktif"], queryFn: () => fetchJson("/api/laporan/aktif") });
-  const { data: statistik } = useQuery({ queryKey: ["dashboard-statistik"], queryFn: () => fetchJson("/api/dashboard/statistik") });
-  const { data: transparansiList, isLoading } = useQuery({ queryKey: ["transparansi-laporan"], queryFn: () => fetchJson("/api/transparansi/laporan") });
+  const { data: aktifList } = useQuery({ queryKey: ["laporan-aktif"], queryFn: () => fetchJson("/api/laporan/aktif"), ...SEGAR });
+  const { data: statistik } = useQuery({ queryKey: ["dashboard-statistik"], queryFn: () => fetchJson("/api/dashboard/statistik"), ...SEGAR });
+  const { data: transparansiList, isLoading } = useQuery({ queryKey: ["transparansi-laporan"], queryFn: () => fetchJson("/api/transparansi/laporan"), ...SEGAR });
 
   const list: any[] = transparansiList ?? [];
   const laporanAktif: number | null = aktifList ? aktifList.length : null;
@@ -135,9 +138,9 @@ export default function Home() {
       <main>
         {/* ---------- HERO ---------- */}
         <div className="mx-auto max-w-[1240px] px-4 pt-3.5 sm:px-6">
-          <div className="relative h-[640px] overflow-hidden rounded-[26px] bg-[#E8A866] text-white sm:h-[clamp(500px,74vh,640px)] sm:rounded-[34px]">
-            <Ilustrasi adegan="hero" className="absolute inset-0 h-full w-full" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(14,27,46,0)_45%,rgba(14,27,46,.62)_100%)]" />
+          <div className="relative h-[640px] overflow-hidden rounded-[26px] bg-[#FED07A] text-white sm:h-[clamp(500px,74vh,640px)] sm:rounded-[34px]">
+            <img src={`${import.meta.env.BASE_URL}hero-bali.jpg`} alt="Ilustrasi pura di tepi danau Bali saat matahari terbenam" className="absolute inset-0 h-full w-full object-cover object-[68%_center]" fetchPriority="high" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(28,40,22,0)_48%,rgba(28,40,22,.62)_100%)]" />
 
             <div className="absolute left-4 right-4 top-4 flex items-center gap-2.5 self-start rounded-full border border-white/20 bg-ink/60 py-2 pl-2.5 pr-3.5 text-[13px] font-semibold sm:left-[22px] sm:right-auto sm:top-[22px]">
               <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", laporanAktif ? "bg-urgent shadow-[0_0_0_4px_rgba(210,38,28,.3)]" : "bg-status-done-fg")} />

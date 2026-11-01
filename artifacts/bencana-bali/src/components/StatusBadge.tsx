@@ -1,11 +1,10 @@
 import { cn } from "@/lib/utils";
 
 // Satu-satunya StatusBadge di app web — jangan bikin styling status baru di
-// tempat lain. Spec: design_handoff_bali_rief/README.md § Accessibility rule
-// (non-negotiable): setiap status HARUS warna + bentuk ikon + label sekaligus,
-// tidak pernah cuma warna. Bentuk ikon per status juga tidak boleh ditukar
-// (mis. "aktif" segitiga, bukan lingkaran). Sama persis dengan StatusBadge
-// mobile (artifacts/mobile/src/components/StatusBadge.tsx) — jaga konsisten.
+// tempat lain. Redesign 2026: bentuk ikon geometris (segitiga/belah ketupat/
+// lingkaran) dihapus atas permintaan pemilik produk. Status tetap tidak
+// bergantung pada warna saja karena LABEL TEKS selalu tampil (WCAG 1.4.1).
+// StatusIcon dipertahankan untuk mobile/arsip, tidak lagi dirender di web.
 export type StatusKey = "wait" | "ver" | "act" | "done" | "rej";
 
 const STATUS_LABELS: Record<StatusKey, string> = {
@@ -44,7 +43,7 @@ function resolveStatusKey(status: string): StatusKey {
   return BACKEND_TO_KEY[status] ?? "wait";
 }
 
-function StatusIcon({ status, size }: { status: StatusKey; size: number }) {
+export function StatusIcon({ status, size }: { status: StatusKey; size: number }) {
   if (status === "wait") {
     return (
       <svg width={size} height={size} viewBox="0 0 10 10" aria-hidden="true">
@@ -88,12 +87,11 @@ export function StatusBadge({ status: rawStatus, label, className }: { status: s
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-[7px] whitespace-nowrap rounded-[7px] border px-[11px] py-[6px] text-[12.5px] font-bold",
+        "inline-flex items-center whitespace-nowrap rounded-full border px-3 py-[5px] text-[12.5px] font-bold",
         STATUS_CLASS[status],
         className,
       )}
     >
-      <StatusIcon status={status} size={11} />
       {label ?? STATUS_LABELS[status]}
     </span>
   );
