@@ -3,12 +3,11 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useAuth } from "@/context/AuthContext";
-import { useColorTheme } from "@/hooks/use-theme";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReportDetailOverlay } from "@/components/ReportDetailOverlay";
-import { TriangleIcon } from "@/components/icons/handoff-icons";
-import { ShieldCheck, Sun, Moon, Info, UserCheck, Clock } from "lucide-react";
+import { Eyebrow } from "@/components/brand/Brand";
+import { PublicFooter, PublicHeader, UtilityStrip } from "@/components/public/PublicShell";
+import { Info, UserCheck, Clock } from "lucide-react";
 import { formatRupiah, formatRupiahRingkas, formatTanggalSingkat, JENIS_LABELS } from "@/lib/format";
 
 const BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
@@ -106,8 +105,6 @@ function Bar({ pct, color = "bg-primary" }: { pct: number; color?: string }) {
 }
 
 export default function Transparansi() {
-  const { user } = useAuth();
-  const { isDark, toggle } = useColorTheme();
   // Default "semua" (bukan 30 hari seperti di mockup) — data laporan yang ada
   // sekarang tersebar beberapa bulan, jadi default 30 hari akan tampil kosong.
   const [periode, setPeriode] = useState<Periode>("semua");
@@ -157,57 +154,14 @@ export default function Transparansi() {
 
   return (
     <div className="min-h-screen bg-background font-sans text-foreground">
-      <div className="border-b border-border bg-surface-2 text-[12.5px] text-text2">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-4 px-6 py-[7px]">
-          <span className="flex items-center gap-[7px] font-semibold text-foreground">
-            <ShieldCheck size={13} />
-            Layanan koordinasi bencana · Provinsi Bali
-          </span>
-          <span className="text-border-strong">|</span>
-          <span>Darurat 24 jam: <b className="font-mono text-foreground">112</b> (bebas pulsa)</span>
-          <div className="flex-1" />
-          <button
-            onClick={toggle}
-            className="flex items-center gap-[7px] rounded-full border border-border-strong bg-transparent px-[11px] py-1 text-xs font-semibold text-text2 hover:border-text2 hover:text-foreground"
-          >
-            {isDark ? <Sun size={12} /> : <Moon size={12} />}
-            {isDark ? "Mode terang" : "Mode gelap"}
-          </button>
-        </div>
-      </div>
+      <UtilityStrip />
+      <PublicHeader />
 
-      <header className="sticky top-0 z-20 border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-[1180px] items-center gap-8 px-6 py-3.5">
-          <Link href="/" className="flex items-center gap-[11px] text-foreground hover:no-underline">
-            <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-primary">
-              <TriangleIcon size={15} className="text-primary-foreground" />
-            </span>
-            <span className="flex flex-col leading-[1.15]">
-              <b className="text-[17px] font-extrabold tracking-[-0.015em]">Bali-Rief</b>
-              <span className="text-[11.5px] font-medium text-text3">Koordinasi Bencana Bali</span>
-            </span>
-          </Link>
-          <nav className="hidden items-center gap-[26px] text-sm font-semibold md:flex">
-            <Link href="/#laporan" className="text-text2 hover:text-foreground hover:no-underline">Laporan Aktif</Link>
-            <span className="border-b-2 border-primary pb-0.5 text-primary">Transparansi</span>
-            <Link href="/#alur" className="text-text2 hover:text-foreground hover:no-underline">Cara Kerja</Link>
-          </nav>
-          <div className="flex-1" />
-          <div className="flex items-center gap-3">
-            {user ? (
-              <Link href="/" className="text-sm font-semibold text-text2 hover:text-foreground hover:no-underline">Beranda</Link>
-            ) : (
-              <Link href="/login" className="px-3.5 py-[9px] text-sm font-semibold text-text2 hover:text-foreground hover:no-underline">Masuk</Link>
-            )}
-          </div>
-        </div>
-      </header>
-
-      <section className="mx-auto flex max-w-[1180px] flex-col gap-5 px-6 pb-7 pt-10">
+      <section className="mx-auto flex max-w-[1240px] flex-col gap-5 px-4 pb-7 pt-10 sm:px-6">
         <div className="flex flex-wrap items-end gap-7">
           <div className="flex max-w-[60ch] flex-col gap-2.5">
-            <span className="text-xs font-bold uppercase tracking-[0.06em] text-text3">Data publik · tanpa perlu masuk</span>
-            <h1 className="text-[32px] font-extrabold leading-[1.1] tracking-[-0.03em] md:text-[40px]">Transparansi laporan, dana, dan relawan</h1>
+            <Eyebrow>Data publik · tanpa perlu masuk</Eyebrow>
+            <h1 className="text-[clamp(34px,4.6vw,56px)] font-extrabold leading-none tracking-[-0.045em]">Uang masuk, uang keluar. <span className="bg-[linear-gradient(transparent_62%,hsl(var(--marigold))_62%_90%,transparent_90%)]">Semua terlihat.</span></h1>
             <p className="text-base leading-[1.55] text-text2 md:text-[16.5px]">
               Setiap laporan yang masuk, setiap rupiah yang tercatat, serta jumlah relawan bertugas ditampilkan apa adanya — termasuk laporan yang ditolak beserta alasannya.
             </p>
@@ -242,7 +196,7 @@ export default function Transparansi() {
         </div>
       </section>
 
-      <section className="mx-auto grid max-w-[1180px] grid-cols-1 gap-3.5 px-6 pb-9 sm:grid-cols-2 lg:grid-cols-4">
+      <section className="mx-auto grid max-w-[1240px] grid-cols-1 gap-3.5 px-6 pb-9 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Dana masuk" value={formatRupiahRingkas(totalDana)} sub={`${totalDonatur} donatur · ${totalDonasi} donasi tercatat`} />
         <StatCard label="Laporan tercatat" value={String(list.length)} valueClass="text-primary" sub={`${aktifList.length} masih aktif ditangani`} />
         <StatCard label="Relawan bertugas" value={String(statistik?.penugasan_aktif ?? 0)} sub={`dari ${statistik?.total_relawan ?? 0} relawan terdaftar`} subMuted={`${statistik?.relawan_menunggu ?? 0} menunggu verifikasi`} />
@@ -250,7 +204,7 @@ export default function Transparansi() {
       </section>
 
       <section id="laporan" className="border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-[1180px] flex-col gap-5 px-6 py-10">
+        <div className="mx-auto flex max-w-[1240px] flex-col gap-5 px-6 py-10">
           <div className="flex flex-wrap items-end gap-5">
             <div className="flex flex-col gap-[7px]">
               <h2 className="text-2xl font-extrabold tracking-[-0.02em]">Laporan bencana</h2>
@@ -296,7 +250,7 @@ export default function Transparansi() {
       </section>
 
       <section className="border-t border-border">
-        <div className="mx-auto grid max-w-[1180px] grid-cols-1 items-start gap-11 px-6 py-10 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="mx-auto grid max-w-[1240px] grid-cols-1 items-start gap-11 px-6 py-10 lg:grid-cols-[1.15fr_0.85fr]">
           <div className="flex flex-col gap-[18px]">
             <div className="flex flex-col gap-[7px]">
               <h2 className="text-2xl font-extrabold tracking-[-0.02em]">Dana per jenis bencana</h2>
@@ -392,7 +346,7 @@ export default function Transparansi() {
       </section>
 
       <section className="border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-[1180px] flex-col gap-4 px-6 py-10">
+        <div className="mx-auto flex max-w-[1240px] flex-col gap-4 px-6 py-10">
           <div className="flex flex-col gap-[7px]">
             <h2 className="text-2xl font-extrabold tracking-[-0.02em]">Donasi terbaru</h2>
             <p className="text-[14.5px] text-text2">Donasi dana dan barang yang baru masuk pada periode ini, langsung dari catatan sistem.</p>
@@ -417,7 +371,7 @@ export default function Transparansi() {
       </section>
 
       <section className="border-t border-border">
-        <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-6 px-6 py-9 sm:grid-cols-3">
+        <div className="mx-auto grid max-w-[1240px] grid-cols-1 gap-6 px-6 py-9 sm:grid-cols-3">
           <div className="flex flex-col gap-2 border-l-[3px] border-border-strong pl-4">
             <b className="text-[15px] font-extrabold">Dari mana angkanya</b>
             <p className="text-[13.5px] leading-[1.5] text-text2">Angka di halaman ini dihitung langsung dari data laporan, donasi, dan penugasan yang tersimpan di sistem — bukan ringkasan manual.</p>
@@ -433,14 +387,7 @@ export default function Transparansi() {
         </div>
       </section>
 
-      <footer className="border-t border-border bg-surface">
-        <div className="mx-auto flex max-w-[1180px] flex-wrap items-center gap-5 px-6 py-6 text-[12.5px] text-text3">
-          <span>© 2026 Bali-Rief · Koordinasi Bencana Bali</span>
-          <Link href="/" className="font-bold hover:no-underline">Beranda</Link>
-          <div className="flex-1" />
-          <span className="font-mono">Data diperbarui langsung dari server</span>
-        </div>
-      </footer>
+      <PublicFooter />
 
       {openId != null && <ReportDetailOverlay id={openId} onClose={() => setOpenId(null)} />}
     </div>

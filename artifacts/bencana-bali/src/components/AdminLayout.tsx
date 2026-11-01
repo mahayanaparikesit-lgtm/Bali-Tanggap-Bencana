@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useGetDashboardStatistik } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { useColorTheme } from "@/hooks/use-theme";
-import { TriangleIcon } from "@/components/icons/handoff-icons";
+import { BrandMark } from "@/components/brand/Brand";
 import { Moon, Sun } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,17 +17,17 @@ function NavLink({ href, label, count, active }: { href: string; label: string; 
       href={href}
       className={cn(
         "flex items-center gap-2.5 rounded-lg px-[11px] py-2.5 text-[13.5px] font-semibold hover:no-underline",
-        active ? "bg-primary-soft text-foreground" : "text-text2 hover:bg-surface-2 hover:text-foreground",
+        active ? "bg-white/[.08] text-white" : "text-on-ink-2 hover:bg-white/[.05] hover:text-white",
       )}
     >
-      {active && <span className="h-4 w-[5px] rounded-[3px] bg-primary" />}
+      {active && <span className="h-4 w-[5px] rounded-[3px] bg-marigold" />}
       {label}
       <div className="flex-1" />
       {count != null && (
         <span
           className={cn(
             "rounded-[5px] px-1.5 py-0.5 font-mono text-xs font-semibold",
-            active ? "bg-primary text-primary-foreground" : "text-text3",
+            active ? "bg-marigold text-ink" : "text-on-ink-2",
           )}
         >
           {count}
@@ -53,14 +53,12 @@ export default function AdminLayout({ children, activePage = "antrian" }: { chil
 
   return (
     <div className="flex min-h-screen flex-col bg-background font-sans text-foreground">
-      <header className="sticky top-0 z-30 flex items-center gap-5 border-b border-border bg-surface px-[22px] py-2.5">
-        <span className="flex items-center gap-2.5">
-          <span className="flex h-7 w-7 items-center justify-center rounded-[7px] bg-primary">
-            <TriangleIcon size={13} className="text-primary-foreground" />
-          </span>
-          <b className="text-[15px] font-extrabold tracking-[-0.01em]">Bali-Rief</b>
-          <span className="border-l border-border pl-2.5 text-xs font-bold text-text3">Konsol Admin · Pusdalops</span>
-        </span>
+      <header className="sticky top-0 z-30 flex items-center gap-5 border-b border-border bg-background/95 px-[22px] py-2.5 backdrop-blur">
+        <Link href="/" className="flex items-center gap-2.5 hover:no-underline">
+          <BrandMark size={30} />
+          <b className="text-[15px] font-extrabold tracking-[-0.02em]">Bali-Rief</b>
+          <span className="border-l border-border pl-2.5 font-mono text-[11px] font-medium uppercase tracking-[0.1em] text-text2">Konsol Admin · Pusdalops</span>
+        </Link>
         <div className="flex-1" />
         <button
           onClick={toggle}
@@ -84,16 +82,16 @@ export default function AdminLayout({ children, activePage = "antrian" }: { chil
       </header>
 
       <div className="grid flex-1 grid-cols-[214px_1fr] items-start">
-        <nav className="sticky top-[51px] flex min-h-[calc(100vh-51px)] flex-col gap-[3px] border-r border-border bg-surface p-3">
-          <span className="px-2.5 pb-2 pt-1.5 text-[11px] font-extrabold uppercase tracking-[0.07em] text-text3">Pekerjaan</span>
+        <nav className="sticky top-[51px] flex min-h-[calc(100vh-51px)] flex-col gap-[3px] bg-ink p-3 text-on-ink">
+          <span className="px-2.5 pb-2 pt-1.5 font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-on-ink-2">Pekerjaan</span>
           <NavLink href="/admin" label="Antrian kerja" count={antrianCount} active={activePage === "antrian"} />
-          <span className="px-2.5 pb-2 pt-[18px] text-[11px] font-extrabold uppercase tracking-[0.07em] text-text3">Kelola</span>
+          <span className="px-2.5 pb-2 pt-[18px] font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-on-ink-2">Kelola</span>
           <NavLink href="/admin/laporan" label="Semua laporan" count={stats?.total_laporan} active={activePage === "laporan"} />
           <NavLink href="/admin/relawan" label="Relawan" count={stats?.total_relawan} active={activePage === "relawan"} />
           <NavLink href="/admin/inventaris" label="Logistik & stok" count={stats?.stok_kritis} active={activePage === "inventaris"} />
           <NavLink href="/admin/penugasan" label="Penugasan" count={stats?.penugasan_aktif} active={activePage === "penugasan"} />
           <NavLink href="/admin/donasi" label="Donasi" active={activePage === "donasi"} />
-          <a href="/transparansi" className="flex items-center gap-2.5 rounded-lg px-[11px] py-2.5 text-[13.5px] font-semibold text-text2 hover:bg-surface-2 hover:text-foreground hover:no-underline">
+          <a href="/transparansi" className="flex items-center gap-2.5 rounded-lg px-[11px] py-2.5 text-[13.5px] font-semibold text-on-ink-2 hover:bg-white/[.05] hover:text-white hover:no-underline">
             Transparansi publik
           </a>
         </nav>

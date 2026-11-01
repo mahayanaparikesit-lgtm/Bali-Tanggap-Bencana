@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Eye, EyeOff, Loader2, Heart, FileText, Check } from "lucide-react";
-import { TriangleIcon } from "@/components/icons/handoff-icons";
+import { AuthShell } from "@/components/public/AuthShell";
 import { cn } from "@/lib/utils";
 
 const ROLES: { value: UserRole; label: string; desc: string; icon: React.ElementType; color: string }[] = [
@@ -55,25 +55,10 @@ export default function Register() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <div className="w-full max-w-lg">
-        <div className="mb-8 text-center">
-          <Link href="/">
-            <div className="inline-flex cursor-pointer items-center gap-[11px]">
-              <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-primary">
-                <TriangleIcon size={15} className="text-primary-foreground" />
-              </span>
-              <span className="flex flex-col items-start leading-[1.15]">
-                <b className="text-[17px] font-extrabold tracking-[-0.015em] text-foreground">Bali-Rief</b>
-                <span className="text-[11.5px] font-medium text-text3">Koordinasi Bencana Bali</span>
-              </span>
-            </div>
-          </Link>
-        </div>
-
-        <Card className="rounded-[12px] border border-border bg-surface shadow-none">
+    <AuthShell>
+        <Card className="rounded-3xl border border-border bg-card shadow-none">
           <CardHeader className="pb-4">
-            <CardTitle className="text-2xl font-extrabold tracking-tight">Buat Akun</CardTitle>
+            <CardTitle className="text-[32px] font-extrabold tracking-[-0.04em]">Buat Akun</CardTitle>
             <CardDescription>Daftarkan diri Anda dan pilih peran dalam platform koordinasi bencana</CardDescription>
           </CardHeader>
           <CardContent>
@@ -180,7 +165,6 @@ export default function Register() {
             </p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </AuthShell>
   );
 }

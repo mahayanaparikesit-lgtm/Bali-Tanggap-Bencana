@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { TriangleIcon } from "@/components/icons/handoff-icons";
+import { AuthShell } from "@/components/public/AuthShell";
 
 export default function Login() {
   const { login } = useAuth();
@@ -39,25 +39,10 @@ export default function Login() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <Link href="/">
-            <div className="inline-flex cursor-pointer items-center gap-[11px]">
-              <span className="flex h-[34px] w-[34px] items-center justify-center rounded-[9px] bg-primary">
-                <TriangleIcon size={15} className="text-primary-foreground" />
-              </span>
-              <span className="flex flex-col items-start leading-[1.15]">
-                <b className="text-[17px] font-extrabold tracking-[-0.015em] text-foreground">Bali-Rief</b>
-                <span className="text-[11.5px] font-medium text-text3">Koordinasi Bencana Bali</span>
-              </span>
-            </div>
-          </Link>
-        </div>
-
-        <Card className="rounded-[12px] border border-border bg-surface shadow-none">
+    <AuthShell>
+        <Card className="rounded-3xl border border-border bg-card shadow-none">
           <CardHeader className="pb-4">
-            <CardTitle className="text-2xl font-extrabold tracking-tight">Masuk</CardTitle>
+            <CardTitle className="text-[32px] font-extrabold tracking-[-0.04em]">Masuk</CardTitle>
             <CardDescription>Masuk ke akun Anda untuk mengakses platform</CardDescription>
           </CardHeader>
           <CardContent>
@@ -119,7 +104,6 @@ export default function Login() {
             </p>
           </CardContent>
         </Card>
-      </div>
-    </div>
+    </AuthShell>
   );
 }
