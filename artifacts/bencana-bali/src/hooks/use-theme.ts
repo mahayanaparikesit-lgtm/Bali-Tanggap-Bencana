@@ -7,8 +7,9 @@ function getInitial(): boolean {
   if (typeof window === "undefined") return false;
   const stored = window.localStorage.getItem("theme");
   if (stored === "dark") return true;
-  if (stored === "light") return false;
-  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  // Default selalu terang (mode gelap hanya bila pengguna memilihnya sendiri),
+  // tidak mengikuti pengaturan gelap sistem operasi.
+  return false;
 }
 
 export function useColorTheme() {

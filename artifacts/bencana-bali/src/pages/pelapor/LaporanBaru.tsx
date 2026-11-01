@@ -268,7 +268,7 @@ export default function LaporanBaru() {
         )}
       </header>
 
-      <div className="mx-auto grid max-w-[1100px] gap-10 px-4 pb-40 pt-6 sm:px-6 lg:grid-cols-[1fr_300px]">
+      <div className="mx-auto max-w-[1100px] px-4 pb-40 pt-6 sm:px-6">
         <main className="mx-auto w-full max-w-[640px]">
           {fase.t === "kirim" && (
             <Hasil ikon={<span className="h-10 w-10 animate-spin rounded-full border-4 border-border-strong border-t-primary" />} judul="Mengirim laporan…" teks="Mohon tunggu sebentar." />
@@ -491,31 +491,11 @@ export default function LaporanBaru() {
           )}
         </main>
 
-        {/* Panel samping (desktop): kemajuan + prinsip. */}
-        {fase.t === "isi" && (
-          <aside className="hidden lg:block">
-            <div className="sticky top-28 rounded-3xl bg-ink p-6 text-on-ink">
-              <b className="text-[26px] font-extrabold leading-[1.05] tracking-[-0.04em] text-white">Ketuk, <span className="text-marigold">bukan ketik.</span></b>
-              <p className="mt-2.5 text-[13px] text-on-ink-2">Satu-satunya isian wajib yang diketik adalah nomor HP. Isian tersimpan di perangkat ini sampai terkirim.</p>
-              <ol className="mt-5 space-y-0.5">
-                {STEPS.map((s, i) => (
-                  <li key={s}>
-                    <button onClick={() => i + 1 < d.step && pindah(i + 1)} disabled={i + 1 >= d.step}
-                      className={cn("flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left text-[13px]", i + 1 === d.step ? "bg-white/[.07] text-white" : i + 1 < d.step ? "text-on-ink hover:bg-white/[.04]" : "text-on-ink-2")}>
-                      <b className={cn("w-5 font-mono text-[11.5px] font-medium", i + 1 < d.step && "text-marigold")}>{i + 1 < d.step ? "✓" : `0${i + 1}`}</b>{s}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-              <a href="tel:112" className="mt-5 flex items-center gap-2 border-t border-ink-line pt-4 text-[13px] font-bold text-white hover:no-underline"><PhoneCall size={15} className="text-[#FF7A6E]" />Darurat jiwa? Telepon 112</a>
-            </div>
-          </aside>
-        )}
       </div>
 
       {fase.t === "isi" && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-card">
-          <div className="mx-auto flex max-w-[1100px] items-center gap-3 px-4 pb-4 pt-3 sm:px-6">
+          <div className="mx-auto flex max-w-[640px] items-center gap-3 px-4 pb-4 pt-3">
             <div className="hidden min-w-0 flex-1 text-xs text-text2 sm:block lg:max-w-none">
               {halangan ? <span className="flex items-center gap-1.5"><Info size={13} />{halangan}</span> : d.disimpan ? `Draf tersimpan otomatis · ${d.disimpan}` : "Draf tersimpan otomatis di perangkat"}
             </div>
