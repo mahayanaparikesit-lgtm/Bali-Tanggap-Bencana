@@ -193,11 +193,11 @@
   --chart-4: 155 55% 26%;
   --chart-5: 28 85% 40%;
 
-  --status-wait-fg: hsl(28 90% 32%); --status-wait-bg: hsl(28 90% 92%); --status-wait-br: hsl(28 80% 72%);
-  --status-ver-fg: hsl(210 80% 36%); --status-ver-bg: hsl(210 80% 94%); --status-ver-br: hsl(210 75% 72%);
-  --status-done-fg: hsl(155 55% 26%); --status-done-bg: hsl(155 50% 92%); --status-done-br: hsl(155 40% 68%);
-  --status-rej-fg: hsl(220 10% 36%); --status-rej-bg: hsl(220 14% 92%); --status-rej-br: hsl(220 12% 74%);
-  --status-act-fg: hsl(4 80% 40%); --status-act-bg: hsl(4 80% 95%); --status-act-br: hsl(4 75% 74%);
+  --status-wait-fg: hsl(34 85% 30%); --status-wait-bg: hsl(42 92% 88%); --status-wait-br: hsl(40 70% 70%);
+  --status-ver-fg: hsl(100 34% 26%); --status-ver-bg: hsl(88 38% 87%); --status-ver-br: hsl(90 26% 68%);
+  --status-done-fg: hsl(160 42% 22%); --status-done-bg: hsl(150 30% 86%); --status-done-br: hsl(152 22% 64%);
+  --status-rej-fg: hsl(35 10% 36%); --status-rej-bg: hsl(40 22% 88%); --status-rej-br: hsl(38 14% 70%);
+  --status-act-fg: hsl(12 66% 38%); --status-act-bg: hsl(16 78% 90%); --status-act-br: hsl(14 55% 74%);
 
   --app-font-sans: 'Plus Jakarta Sans', -apple-system, sans-serif;
   /* Playfair Display cuma dipakai di Pilih Tempat Donasi (donatur), sesuai

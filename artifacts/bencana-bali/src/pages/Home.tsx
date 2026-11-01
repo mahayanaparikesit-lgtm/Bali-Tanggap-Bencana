@@ -41,45 +41,50 @@ function KartuLaporan({ l, onOpen }: { l: any; onOpen: () => void }) {
   const foto = (l.foto_urls ?? [])[0];
   const pk = progresKebutuhan(l.kebutuhan);
   const belum = (l.kebutuhan ?? []).filter((k: any) => k.jumlah_terpenuhi < k.jumlah_dibutuhkan);
-  const aktif = l.status !== "selesai";
+  const selesai = l.status === "selesai";
+  const tgl = new Date(l.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short" });
   return (
-    <article className="flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition-shadow hover:shadow-[0_18px_40px_-24px_rgba(14,27,46,.45)]">
-      <div className="relative aspect-[4/3] overflow-hidden">
-        {foto ? <img src={foto} alt={`Foto dokumentasi: ${l.judul}`} className="h-full w-full object-cover" loading="lazy" />
-          : <FotoBencana jenis={l.jenis_bencana} className="h-full w-full" />}
-        <div className="absolute left-3.5 top-3.5"><StatusBadge status={l.status} /></div>
-        <span className="absolute bottom-3 left-3.5 rounded-md bg-ink/60 px-2 py-1 font-mono text-[11px] text-white">
-          {JENIS_LABELS[l.jenis_bencana] ?? l.jenis_bencana} · {formatWaktu(l.created_at)}
-        </span>
-      </div>
-      <div className="flex flex-1 flex-col p-[18px]">
-        <div className="flex items-center gap-1.5 text-[12.5px] font-semibold text-text2"><MapPin size={14} className="shrink-0" /><span className="truncate">{l.lokasi}</span></div>
-        <h3 className="mt-1.5 text-[21px] font-extrabold leading-[1.15] tracking-[-0.035em]">{l.judul}</h3>
-
-        <div className="mt-4">
-          <div className="h-2.5 overflow-hidden rounded-full bg-muted">
-            <i className="block h-full rounded-full bg-primary" style={{ width: `${pk ?? 0}%` }} />
-          </div>
-          <div className="mt-2 flex items-baseline justify-between text-[12.5px] text-text2">
-            {pk == null ? <span>Kebutuhan belum dicatat relawan</span> : <><b className="font-mono text-[17px] font-semibold text-foreground">{pk}%</b><span>kebutuhan terpenuhi</span></>}
-          </div>
+    <article className="group flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition-shadow hover:shadow-[0_18px_40px_-26px_rgba(28,40,22,.5)]">
+      <button onClick={onOpen} className="relative block aspect-[16/10] overflow-hidden text-left" aria-label={`Lihat detail ${l.judul}`}>
+        {foto ? <img src={foto} alt="" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" loading="lazy" />
+          : <FotoBencana jenis={l.jenis_bencana} label={false} className="h-full w-full transition-transform duration-500 group-hover:scale-[1.03]" />}
+        {selesai && <span className="absolute right-3 top-3 rounded-full bg-card/95 px-2.5 py-1 text-xs font-bold text-status-done-fg">Selesai</span>}
+      </button>
+      <div className="flex flex-1 flex-col p-5">
+        <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.08em] text-text2">
+          <span className="font-semibold text-foreground">{JENIS_LABELS[l.jenis_bencana] ?? l.jenis_bencana}</span>
+          <span>·</span><span>{tgl}</span>{!foto && <><span>·</span><span>foto ilustrasi</span></>}
         </div>
+        <h3 className="mt-2 line-clamp-2 min-h-[2.3em] text-[20px] font-extrabold leading-[1.15] tracking-[-0.035em]">{l.judul}</h3>
+        <p className="mt-1.5 flex items-center gap-1.5 text-[13px] text-text2"><MapPin size={14} className="shrink-0" /><span className="truncate">{l.lokasi}</span></p>
 
-        <div className="mt-3.5 flex gap-3.5 whitespace-nowrap text-[12.5px] text-text2">
-          {l.jumlah_terdampak ? <span className="flex items-center gap-1.5"><Users size={14} />{Number(l.jumlah_terdampak).toLocaleString("id-ID")} jiwa</span> : null}
-          <span className="flex items-center gap-1.5"><HardHat size={14} />{l.relawan_bertugas?.length ?? 0} relawan</span>
-          <span className="flex items-center gap-1.5"><Package size={14} />{(l.kebutuhan ?? []).length} kebutuhan</span>
-        </div>
-        {belum.length > 0 && (
-          <div className="mt-3.5 flex flex-wrap gap-1.5">
-            {belum.slice(0, 3).map((k: any) => <span key={k.id} className="rounded-md bg-muted px-2 py-1 text-[11.5px] font-semibold">{k.nama_item}</span>)}
-          </div>
-        )}
-        <div className="mt-auto flex gap-2 pt-[18px]">
-          <button onClick={onOpen} className="flex-1 rounded-full border-[1.5px] border-border-strong py-2.5 text-[13px] font-bold hover:border-foreground">Detail</button>
-          {aktif && (
-            <Link href="/donatur" className="flex flex-1 items-center justify-center rounded-full bg-primary py-2.5 text-[13px] font-bold text-primary-foreground hover:bg-primary-hover hover:no-underline">Donasi</Link>
+        <div className="mt-5 rounded-2xl bg-muted/60 p-3.5">
+          {pk == null ? (
+            <p className="text-[13px] text-text2">Kebutuhan sedang dicatat relawan di lokasi.</p>
+          ) : (
+            <>
+              <div className="flex items-baseline justify-between">
+                <span className="text-[13px] text-text2">Kebutuhan terpenuhi</span>
+                <b className="font-mono text-[15px] font-semibold">{pk}%</b>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-card"><i className="block h-full rounded-full bg-primary" style={{ width: `${pk}%` }} /></div>
+            </>
           )}
+          <div className="mt-3 flex gap-4 text-[12.5px] text-text2">
+            {l.jumlah_terdampak ? <span className="flex items-center gap-1.5"><Users size={14} />{Number(l.jumlah_terdampak).toLocaleString("id-ID")} jiwa</span> : null}
+            <span className="flex items-center gap-1.5"><HardHat size={14} />{l.relawan_bertugas?.length ?? 0} relawan</span>
+          </div>
+        </div>
+
+        <div className="mt-3 flex min-h-[28px] flex-wrap gap-1.5">
+          {belum.slice(0, 2).map((k: any) => <span key={k.id} className="rounded-full border border-border px-2.5 py-1 text-[12px] font-semibold">{k.nama_item}</span>)}
+          {belum.length > 2 && <span className="rounded-full px-1.5 py-1 text-[12px] font-semibold text-text2">+{belum.length - 2} lagi</span>}
+        </div>
+        <div className="mt-auto grid grid-cols-2 gap-2 pt-5">
+          <button onClick={onOpen} className="rounded-full border-[1.5px] border-border-strong py-2.5 text-[13px] font-bold hover:border-foreground">Detail</button>
+          {selesai
+            ? <span className="grid place-items-center rounded-full bg-muted py-2.5 text-[13px] font-bold text-text2">Sudah tertangani</span>
+            : <Link href="/donatur" className="flex items-center justify-center gap-1.5 rounded-full bg-primary py-2.5 text-[13px] font-bold text-primary-foreground hover:bg-primary-hover hover:no-underline"><HandHeart size={15} />Donasi</Link>}
         </div>
       </div>
     </article>
@@ -278,23 +283,27 @@ export default function Home() {
                   Dari laporan ke <span className="bg-[linear-gradient(transparent_62%,hsl(var(--marigold))_62%_90%,transparent_90%)]">bukti penyaluran.</span>
                 </h2>
               </div>
-              <p className="max-w-[420px] text-[15px] text-text2">Setiap laporan melewati tahap yang sama. Statusnya selalu terlihat publik, lengkap dengan bentuk ikon dan label.</p>
+              <p className="max-w-[420px] text-[15px] text-text2">Setiap laporan melewati empat tahap yang sama, dan statusnya selalu bisa dilihat publik.</p>
             </div>
-            <div className="mt-10 grid gap-7 sm:grid-cols-2 lg:grid-cols-4">
+            <ol className="relative mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {/* garis penghubung antar-tahap (desktop) */}
+              <span aria-hidden="true" className="absolute left-[28px] right-[28px] top-[27px] hidden h-0.5 bg-border-strong lg:block" />
               {[
-                ["01 · Lapor", "± 3 menit", "Warga melapor", "Jenis bencana, lokasi, foto, kondisi, dan jumlah warga terdampak. Bisa tanpa akun.", "menunggu", "border-urgent"],
-                ["02 · Verifikasi", "Pusdalops", "Petugas memeriksa", "Operator mencocokkan dengan laporan lain. Laporan ganda digabung, bukan dihapus diam-diam.", "terverifikasi", "border-status-wait-fg"],
-                ["03 · Tangani", "relawan & logistik", "Relawan bergerak", "Relawan ditugaskan, kebutuhan dicatat per item di posko lalu dibuka untuk donasi.", "aktif", "border-primary"],
-                ["04 · Laporkan", "bukti publik", "Semua tercatat", "Dana dan barang yang diterima masuk halaman transparansi yang bisa dibuka siapa saja.", "selesai", "border-status-done-fg"],
-              ].map(([n, t, h, p, s, b]) => (
-                <div key={n}>
-                  <div className={cn("flex justify-between border-t-[3px] pt-3 font-mono text-xs text-text2", b)}><b className="font-semibold text-foreground">{n}</b><span>{t}</span></div>
-                  <h3 className="mt-3.5 text-[22px] font-extrabold tracking-[-0.035em]">{h}</h3>
-                  <p className="mt-2 text-[14.5px] text-text2">{p}</p>
-                  <StatusBadge status={s} className="mt-3.5" />
-                </div>
+                ["Warga melapor", "± 3 menit · tanpa akun", "Jenis bencana, lokasi, foto, kondisi, dan jumlah warga terdampak.", "Menunggu verifikasi"],
+                ["Petugas memeriksa", "Pusdalops", "Operator mencocokkan dengan laporan lain. Laporan ganda digabung.", "Terverifikasi"],
+                ["Relawan bergerak", "relawan & logistik", "Relawan ditugaskan, kebutuhan dicatat per item lalu dibuka untuk donasi.", "Aktif ditangani"],
+                ["Semua tercatat", "bukti publik", "Dana dan barang yang diterima tampil di halaman Transparansi.", "Selesai"],
+              ].map(([h, t, p, s], i) => (
+                <li key={h} className="relative flex flex-col rounded-3xl border border-border bg-card p-5">
+                  <span className={cn("relative z-[1] grid h-[54px] w-[54px] place-items-center rounded-2xl font-mono text-xl font-semibold",
+                    i === 3 ? "bg-marigold text-ink" : "bg-primary text-primary-foreground")}>{i + 1}</span>
+                  <span className="mt-4 font-mono text-[11px] uppercase tracking-[0.1em] text-text2">{t}</span>
+                  <h3 className="mt-1 text-[21px] font-extrabold tracking-[-0.035em]">{h}</h3>
+                  <p className="mt-2 flex-1 text-[14px] text-text2">{p}</p>
+                  <span className="mt-4 border-t border-dashed border-border-strong pt-3 text-xs text-text2">Status publik: <b className="text-foreground">{s}</b></span>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
         </section>
 
