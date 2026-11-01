@@ -7,7 +7,7 @@ import { CreatePenugasanBody, UpdatePenugasanBody, GetPenugasanQueryParams } fro
 
 const router = Router();
 
-router.get("/penugasan", requireAuth, async (req, res) => {
+router.get("/penugasan", requireAuth, async (req: any, res) => {
   const query = GetPenugasanQueryParams.safeParse(req.query);
   const { laporan_id } = req.query as Record<string, string>;
 
@@ -19,7 +19,18 @@ router.get("/penugasan", requireAuth, async (req, res) => {
   const rows = await db.select().from(penugasanTable)
     .where(conditions.length ? and(...conditions) : undefined)
     .orderBy(penugasanTable.created_at);
-  return res.json(rows.reverse());
+  if (req.auth.role === "admin") return res.json(rows.reverse());
+
+  // Non-admin hanya boleh melihat link grup / QR / catatan penugasannya sendiri —
+  // dulu link grup WhatsApp relawan lain ikut terkirim ke semua akun yang login.
+  // Identitas relawan dicocokkan lewat email, sama seperti PATCH /lapangan.
+  const [user] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, req.auth.userId));
+  const own = user?.email
+    ? await db.select({ id: relawanTable.id }).from(relawanTable).where(eq(relawanTable.email, user.email))
+    : [];
+  const ownIds = new Set(own.map(r => r.id));
+  return res.json(rows.reverse().map(p =>
+    ownIds.has(p.relawan_id) ? p : { ...p, link_grup: null, qr_code_url: null, catatan: null }));
 });
 
 router.post("/penugasan", requireRole(["admin"]), async (req, res) => {
