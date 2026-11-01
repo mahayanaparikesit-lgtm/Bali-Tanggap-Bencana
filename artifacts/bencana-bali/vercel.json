@@ -1,8 +1,10 @@
 {
+  "buildCommand": "pnpm run build",
+  "outputDirectory": "dist/public",
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://bali-rief-api-server.vercel.app/api/:path*"
+      "destination": "https://bali-rief-api.vercel.app/api/:path*"
     },
     {
       "source": "/(.*)",

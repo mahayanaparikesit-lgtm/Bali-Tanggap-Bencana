@@ -53,3 +53,7 @@ Thumbs.db
 .env.local
 .env.*.localnode_modules/
 .env
+
+# Vercel CLI (tautan project lokal)
+.vercel
+.env.local
