@@ -7,7 +7,7 @@ Mulai Fase S, perubahan skema **tidak lagi** memakai `drizzle-kit push`. `push` 
 1. Ubah schema di `lib/db/src/schema/*.ts`.
 2. Buat file migrasi (tidak terhubung ke database, aman dijalankan kapan saja):
    ```
-   pnpm --filter @workspace/db run generate -- --name <nama-singkat>
+   pnpm --filter @workspace/db run generate --name <nama-singkat>
    ```
    Perintah ini menulis `lib/db/drizzle/NNNN_<nama>.sql` dan snapshot di `lib/db/drizzle/meta/`.
    `drizzle.config.ts` mewajibkan `DATABASE_URL` terisi; untuk `generate` boleh nilai palsu, misalnya
@@ -28,6 +28,7 @@ Mulai Fase S, perubahan skema **tidak lagi** memakai `drizzle-kit push`. `push` 
 |---|---|
 | `0000_baseline.sql` | Seluruh skema saat Fase S (8 tabel), dihasilkan dari `lib/db/src/schema`. |
 | `0001_session_store.sql` | Tabel `session` untuk `connect-pg-simple` (login web). Tidak ada di schema Drizzle; `IF NOT EXISTS`, jadi aman di database yang sudah punya tabelnya. |
+| `0002_donasi_pilihan_nama_kebutuhan.sql` | Kolom `donasi.tampilkan_nama` (boolean, default `false`) dan `donasi.kebutuhan_id`. Hanya `ADD COLUMN`. Kode di branch `fitur/donasi-nama-dan-barang` membaca kedua kolom ini, jadi **migrasi wajib jalan dulu** sebelum kode itu di-deploy. Donasi lama otomatis tampil "Anonim". |
 
 ## Database dev baru (kosong)
 

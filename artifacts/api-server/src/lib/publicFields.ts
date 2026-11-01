@@ -38,13 +38,11 @@ export function publicPenugasan(p: Penugasan) {
   };
 }
 
-// Belum ada flag anonim di tabel donasi (mobile mengirim "Hamba Allah" sebagai
-// penanda anonim). Sementara menunggu keputusan aturan tampil: nama depan
-// utuh + inisial sisanya ("Budi Santoso" → "Budi S.").
-export function maskNamaDonatur(nama: string) {
-  const parts = nama.trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return parts[0] ?? "Anonim";
-  return `${parts[0]} ${parts.slice(1).map(p => `${p[0].toUpperCase()}.`).join(" ")}`;
+// Nama donatur tampil sesuai pilihan donatur sendiri (kolom tampilkan_nama):
+// nama lengkap bila ia memilih tampil, selain itu "Anonim". Donasi lama
+// (sebelum kolom ini ada) default false, jadi tampil "Anonim".
+export function namaDonaturPublik(d: Pick<Donasi, "nama_donatur" | "tampilkan_nama">) {
+  return d.tampilkan_nama && d.nama_donatur.trim() ? d.nama_donatur.trim() : "Anonim";
 }
 
 export function publicDonasi(d: Donasi) {
@@ -55,7 +53,7 @@ export function publicDonasi(d: Donasi) {
     jumlah_dana: d.jumlah_dana,
     nama_barang: d.nama_barang,
     jumlah_barang: d.jumlah_barang,
-    nama_donatur: maskNamaDonatur(d.nama_donatur),
+    nama_donatur: namaDonaturPublik(d),
     status: d.status,
     created_at: d.created_at,
   };
