@@ -99,8 +99,8 @@ export default function AdminRelawan() {
                 </span>
                 <span className="truncate text-[13px] text-text2">{(r.keahlian ?? []).join(", ") || "—"}</span>
                 <span>
-                  {r.foto_ktp_url ? (
-                    <a href={r.foto_ktp_url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold text-primary hover:no-underline">
+                  {(r.foto_ktp_signed_url ?? r.foto_ktp_url ?? undefined) ? (
+                    <a href={(r.foto_ktp_signed_url ?? r.foto_ktp_url ?? undefined)} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold text-primary hover:no-underline">
                       Lihat
                     </a>
                   ) : <span className="text-[13px] text-text3">—</span>}

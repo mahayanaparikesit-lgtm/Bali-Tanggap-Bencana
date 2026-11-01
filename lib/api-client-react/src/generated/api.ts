@@ -46,6 +46,7 @@ import type {
   RelawanInput,
   TransaksiInventaris,
   TransaksiInventarisInput,
+  UploadKtp200,
   UploadResult,
   VerifikasiRelawanInput
 } from './api.schemas';
@@ -148,6 +149,155 @@ export const useUploadFiles = <TError = ErrorType<void>,
       > => {
       return useMutation(getUploadFilesMutationOptions(options));
     }
+
+export const getUploadKtpUrl = () => {
+
+
+
+
+  return `/api/uploads/ktp`
+}
+
+/**
+ * multipart/form-data dengan field `file` (satu berkas). Mengembalikan `path` (bukan URL) untuk dikirim sebagai `foto_ktp_path`. File hanya bisa dibuka admin lewat signed URL. Fetch manual di klien, sama seperti /uploads.
+ * @summary Unggah satu foto KTP ke bucket PRIVAT (S4)
+ */
+export const uploadKtp = async ( options?: RequestInit): Promise<UploadKtp200> => {
+
+  return customFetch<UploadKtp200>(getUploadKtpUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getUploadKtpMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadKtp>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadKtp>>, TError,void, TContext> => {
+
+const mutationKey = ['uploadKtp'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadKtp>>, void> = () => {
+
+
+          return  uploadKtp(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadKtpMutationResult = NonNullable<Awaited<ReturnType<typeof uploadKtp>>>
+
+    export type UploadKtpMutationError = ErrorType<void>
+
+    /**
+ * @summary Unggah satu foto KTP ke bucket PRIVAT (S4)
+ */
+export const useUploadKtp = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadKtp>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadKtp>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getUploadKtpMutationOptions(options));
+    }
+
+export const getGetLaporanSayaUrl = () => {
+
+
+
+
+  return `/api/laporan/saya`
+}
+
+/**
+ * @summary Riwayat laporan milik akun yang sedang login (S10), termasuk yang masih menunggu
+ */
+export const getLaporanSaya = async ( options?: RequestInit): Promise<Laporan[]> => {
+
+  return customFetch<Laporan[]>(getGetLaporanSayaUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLaporanSayaQueryKey = () => {
+    return [
+    `/api/laporan/saya`
+    ] as const;
+    }
+
+
+export const getGetLaporanSayaQueryOptions = <TData = Awaited<ReturnType<typeof getLaporanSaya>>, TError = ErrorType<void>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLaporanSaya>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLaporanSayaQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLaporanSaya>>> = ({ signal }) => getLaporanSaya({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLaporanSaya>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLaporanSayaQueryResult = NonNullable<Awaited<ReturnType<typeof getLaporanSaya>>>
+export type GetLaporanSayaQueryError = ErrorType<void>
+
+
+/**
+ * @summary Riwayat laporan milik akun yang sedang login (S10), termasuk yang masih menunggu
+ */
+
+export function useGetLaporanSaya<TData = Awaited<ReturnType<typeof getLaporanSaya>>, TError = ErrorType<void>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLaporanSaya>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLaporanSayaQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getHealthCheckUrl = () => {
 

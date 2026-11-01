@@ -51,6 +51,7 @@ export * from './transaksiInventaris';
 export * from './transaksiInventarisInput';
 export * from './transaksiInventarisInputJenis';
 export * from './transaksiInventarisJenis';
+export * from './uploadKtp200';
 export * from './uploadResult';
 export * from './verifikasiRelawanInput';
 export * from './verifikasiRelawanInputStatusVerifikasi';

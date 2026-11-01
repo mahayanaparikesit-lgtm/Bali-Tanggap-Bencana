@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { useGetLaporan } from "@workspace/api-client-react";
+import { useGetLaporanSaya } from "@workspace/api-client-react";
 import AppLayout from "@/components/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,8 @@ import { Plus, MapPin, Users, Calendar, Clock, CheckCircle2 } from "lucide-react
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PelaporDashboard() {
-  const { data: laporan, isLoading } = useGetLaporan();
+  // S10: hanya laporan milik akun ini, termasuk yang masih menunggu verifikasi.
+  const { data: laporan, isLoading } = useGetLaporanSaya();
 
   return (
     <AppLayout

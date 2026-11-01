@@ -28,7 +28,8 @@ Mulai Fase S, perubahan skema **tidak lagi** memakai `drizzle-kit push`. `push` 
 |---|---|
 | `0000_baseline.sql` | Seluruh skema saat Fase S (8 tabel), dihasilkan dari `lib/db/src/schema`. |
 | `0001_session_store.sql` | Tabel `session` untuk `connect-pg-simple` (login web). Tidak ada di schema Drizzle; `IF NOT EXISTS`, jadi aman di database yang sudah punya tabelnya. |
-| `0002_donasi_pilihan_nama_kebutuhan.sql` | Kolom `donasi.tampilkan_nama` (boolean, default `false`) dan `donasi.kebutuhan_id`. Hanya `ADD COLUMN`. Kode di branch `fitur/donasi-nama-dan-barang` membaca kedua kolom ini, jadi **migrasi wajib jalan dulu** sebelum kode itu di-deploy. Donasi lama otomatis tampil "Anonim". |
+| `0002_donasi_pilihan_nama_kebutuhan.sql` | Kolom `donasi.tampilkan_nama` (boolean, default `false`) dan `donasi.kebutuhan_id`. Hanya `ADD COLUMN`. Donasi lama otomatis tampil "Anonim". |
+| `0003_laporan_korban_ktp_privat_pemilik.sql` | `laporan.terdampak_pria/wanita/anak/balita/lansia` (default 0), `laporan.user_id` (S10), `laporan.foto_ktp_path` & `relawan.foto_ktp_path` (S4, bucket privat `ktp-privat`). Hanya `ADD COLUMN`. |
 
 ## Database dev baru (kosong)
 
@@ -42,7 +43,7 @@ DATABASE_URL=<url database dev> pnpm --filter @workspace/scripts run seed-bencan
 
 Tabelnya sudah ada, jadi `0000_baseline.sql` **tidak boleh dijalankan** di sana karena `CREATE TABLE` akan gagal. Baseline perlu *ditandai* sudah diterapkan. Migrator Drizzle menentukan migrasi mana yang sudah jalan dari kolom `created_at` di tabel `drizzle.__drizzle_migrations`, yang dicocokkan dengan nilai `when` di `drizzle/meta/_journal.json`.
 
-Langkah (belum dijalankan; butuh persetujuan):
+Langkah (**sudah dijalankan** pada database proyek ini lewat `lib/db/scripts/cek-skema.cjs` lalu `lib/db/scripts/tandai-baseline.cjs`; skema terbukti sama dengan baseline sebelum ditandai):
 1. Backup production dari dasbor Supabase.
 2. Pastikan skema production memang sama dengan baseline. Cara read-only: `drizzle-kit pull` ke folder sementara, lalu bandingkan dengan `0000_baseline.sql`. Bila ada selisih, selesaikan dulu sebelum lanjut.
 3. Tandai baseline:

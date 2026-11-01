@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Users, Loader2 } from "lucide-react";
+import { KtpUploadField } from "@/components/KtpUploadField";
 
 const KEAHLIAN_OPTIONS = [
   "Medis", "SAR (Search & Rescue)", "Logistik", "Komunikasi", "Transportasi", "Psikologi", "Memasak", "Lainnya"
@@ -28,9 +29,11 @@ export default function RelawanDaftar() {
   const [checking, setChecking] = useState(true);
 
   const [form, setForm] = useState({
-    nama: "", nik: "", no_hp: "", email: "", alamat: "", foto_ktp_url: "",
+    nama: "", nik: "", no_hp: "", email: "", alamat: "",
   });
   const [keahlian, setKeahlian] = useState<string[]>([]);
+  // S4: KTP diunggah ke bucket privat — yang disimpan hanya path-nya.
+  const [ktpPath, setKtpPath] = useState<string | null>(null);
 
   // Cek saat mount — jika sudah terdaftar, redirect ke profil
   useEffect(() => {
@@ -77,7 +80,7 @@ export default function RelawanDaftar() {
         email: form.email || null,
         alamat: form.alamat,
         keahlian,
-        foto_ktp_url: form.foto_ktp_url || null,
+        foto_ktp_path: ktpPath,
       }
     }, {
       onSuccess: (data) => {
@@ -149,11 +152,8 @@ export default function RelawanDaftar() {
                 <Label htmlFor="alamat">Alamat Lengkap *</Label>
                 <Textarea id="alamat" rows={3} value={form.alamat} onChange={e => handleChange("alamat", e.target.value)} className="mt-1" />
               </div>
-              <div>
-                <Label htmlFor="foto_ktp_url">URL Foto KTP</Label>
-                <Input id="foto_ktp_url" placeholder="Link foto KTP (Google Drive, dll.)" value={form.foto_ktp_url} onChange={e => handleChange("foto_ktp_url", e.target.value)} className="mt-1" />
-                <p className="mt-1 text-xs text-text3">Upload foto KTP ke Google Drive lalu masukkan link yang bisa diakses.</p>
-              </div>
+              <KtpUploadField label="Foto KTP" path={ktpPath} onChange={setKtpPath}
+                hint="Disimpan privat — hanya admin Pusdalops yang bisa membukanya untuk verifikasi." />
             </CardContent>
           </Card>
 

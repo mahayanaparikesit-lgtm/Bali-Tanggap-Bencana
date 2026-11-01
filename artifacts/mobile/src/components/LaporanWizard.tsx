@@ -7,7 +7,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 import * as ImagePicker from "expo-image-picker";
 import { apiFetch, ApiError } from "@/lib/api";
-import { uploadFiles, UploadError } from "@/lib/upload";
+import { uploadFiles, uploadKtp, UploadError } from "@/lib/upload";
 import { useAuth } from "@/context/AuthContext";
 import { colors, fonts, radius, spacing, statusTokens } from "@/lib/theme";
 
@@ -181,7 +181,10 @@ export function LaporanWizard() {
     const id = newPhotoId();
     setKtpPhoto({ id, uri, url: null, uploading: true, error: null });
 
-    const { url, error: uploadError } = await uploadOne(uri);
+    // S4: KTP ke bucket privat — `url` di sini berisi path, bukan URL publik.
+    let url: string | null = null, uploadError: string | null = null;
+    try { url = await uploadKtp(uri); }
+    catch (e) { uploadError = e instanceof UploadError ? e.message : "Gagal mengunggah foto KTP. Periksa koneksi Anda."; }
     setKtpPhoto(cur => (cur && cur.id === id ? { ...cur, url, uploading: false, error: uploadError } : cur));
   };
 
@@ -228,7 +231,7 @@ export function LaporanWizard() {
           kontak_pelapor: kontak,
           jumlah_terdampak: jumlahTerdampak || null,
           foto_urls,
-          foto_ktp_url: ktpPhoto?.url ?? null,
+          foto_ktp_path: ktpPhoto?.url ?? null,
         }),
       });
       setSentId(row.id);

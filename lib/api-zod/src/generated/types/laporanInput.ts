@@ -63,13 +63,40 @@ export interface LaporanInput {
      */
   lokasi_pengungsian?: string | null;
   /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_pria?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_wanita?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_anak?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_balita?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_lansia?: number;
+  /**
      * @maxItems 10
      * @items.maxLength 500
      */
   foto_urls?: string[];
   /**
-     * @maxLength 500
+     * Hasil POST /uploads/ktp (bucket privat). foto_ktp_url publik tidak lagi diterima.
+     * @maxLength 200
      * @nullable
+     * @pattern ^ktp/[0-9a-f-]{36}\.(jpg|png|webp|heic|heif)$
      */
-  foto_ktp_url?: string | null;
+  foto_ktp_path?: string | null;
 }

@@ -18,6 +18,51 @@ export const UploadFilesResponse = zod.object({
 
 
 /**
+ * multipart/form-data dengan field `file` (satu berkas). Mengembalikan `path` (bukan URL) untuk dikirim sebagai `foto_ktp_path`. File hanya bisa dibuka admin lewat signed URL. Fetch manual di klien, sama seperti /uploads.
+ * @summary Unggah satu foto KTP ke bucket PRIVAT (S4)
+ */
+export const UploadKtpResponse = zod.object({
+  "path": zod.string()
+})
+
+
+/**
+ * @summary Riwayat laporan milik akun yang sedang login (S10), termasuk yang masih menunggu
+ */
+export const GetLaporanSayaResponseItem = zod.object({
+  "id": zod.number(),
+  "judul": zod.string(),
+  "jenis_bencana": zod.enum(['banjir', 'gempa_bumi', 'tanah_longsor', 'kebakaran', 'angin_kencang', 'tsunami', 'lainnya']),
+  "lokasi": zod.string(),
+  "koordinat_lat": zod.number().nullish(),
+  "koordinat_lng": zod.number().nullish(),
+  "deskripsi": zod.string(),
+  "nama_pelapor": zod.string(),
+  "kontak_pelapor": zod.string(),
+  "jabatan_pelapor": zod.string().nullish(),
+  "jumlah_terdampak": zod.number().nullish(),
+  "terdampak_pria": zod.number().optional(),
+  "terdampak_wanita": zod.number().optional(),
+  "terdampak_anak": zod.number().optional(),
+  "terdampak_balita": zod.number().optional(),
+  "terdampak_lansia": zod.number().optional(),
+  "lokasi_pengungsian": zod.string().nullish(),
+  "foto_urls": zod.array(zod.string()).optional(),
+  "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish().describe('Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.'),
+  "user_id": zod.number().nullish(),
+  "kronologi": zod.string().nullish(),
+  "target_dana": zod.number().nullish(),
+  "status": zod.enum(['menunggu', 'terverifikasi', 'selesai']),
+  "catatan_admin": zod.string().nullish(),
+  "created_at": zod.string(),
+  "updated_at": zod.string().nullish()
+})
+export const GetLaporanSayaResponse = zod.array(GetLaporanSayaResponseItem)
+
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -45,9 +90,17 @@ export const GetLaporanResponseItem = zod.object({
   "kontak_pelapor": zod.string(),
   "jabatan_pelapor": zod.string().nullish(),
   "jumlah_terdampak": zod.number().nullish(),
+  "terdampak_pria": zod.number().optional(),
+  "terdampak_wanita": zod.number().optional(),
+  "terdampak_anak": zod.number().optional(),
+  "terdampak_balita": zod.number().optional(),
+  "terdampak_lansia": zod.number().optional(),
   "lokasi_pengungsian": zod.string().nullish(),
   "foto_urls": zod.array(zod.string()).optional(),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish().describe('Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.'),
+  "user_id": zod.number().nullish(),
   "kronologi": zod.string().nullish(),
   "target_dana": zod.number().nullish(),
   "status": zod.enum(['menunggu', 'terverifikasi', 'selesai']),
@@ -86,12 +139,34 @@ export const createLaporanBodyJumlahTerdampakMultipleOf = 1;
 
 export const createLaporanBodyLokasiPengungsianMax = 300;
 
+export const createLaporanBodyTerdampakPriaMin = 0;
+export const createLaporanBodyTerdampakPriaMax = 100000;
+export const createLaporanBodyTerdampakPriaMultipleOf = 1;
+
+export const createLaporanBodyTerdampakWanitaMin = 0;
+export const createLaporanBodyTerdampakWanitaMax = 100000;
+export const createLaporanBodyTerdampakWanitaMultipleOf = 1;
+
+export const createLaporanBodyTerdampakAnakMin = 0;
+export const createLaporanBodyTerdampakAnakMax = 100000;
+export const createLaporanBodyTerdampakAnakMultipleOf = 1;
+
+export const createLaporanBodyTerdampakBalitaMin = 0;
+export const createLaporanBodyTerdampakBalitaMax = 100000;
+export const createLaporanBodyTerdampakBalitaMultipleOf = 1;
+
+export const createLaporanBodyTerdampakLansiaMin = 0;
+export const createLaporanBodyTerdampakLansiaMax = 100000;
+export const createLaporanBodyTerdampakLansiaMultipleOf = 1;
+
 export const createLaporanBodyFotoUrlsItemMax = 500;
 
 export const createLaporanBodyFotoUrlsMax = 10;
 
-export const createLaporanBodyFotoKtpUrlMax = 500;
+export const createLaporanBodyFotoKtpPathMax = 200;
 
+
+export const createLaporanBodyFotoKtpPathRegExp = new RegExp('^ktp/[0-9a-f-]{36}\\.(jpg|png|webp|heic|heif)$');
 
 
 export const CreateLaporanBody = zod.object({
@@ -106,8 +181,13 @@ export const CreateLaporanBody = zod.object({
   "jabatan_pelapor": zod.string().max(createLaporanBodyJabatanPelaporMax).nullish(),
   "jumlah_terdampak": zod.number().min(createLaporanBodyJumlahTerdampakMin).max(createLaporanBodyJumlahTerdampakMax).multipleOf(createLaporanBodyJumlahTerdampakMultipleOf).nullish(),
   "lokasi_pengungsian": zod.string().max(createLaporanBodyLokasiPengungsianMax).nullish(),
+  "terdampak_pria": zod.number().min(createLaporanBodyTerdampakPriaMin).max(createLaporanBodyTerdampakPriaMax).multipleOf(createLaporanBodyTerdampakPriaMultipleOf).optional(),
+  "terdampak_wanita": zod.number().min(createLaporanBodyTerdampakWanitaMin).max(createLaporanBodyTerdampakWanitaMax).multipleOf(createLaporanBodyTerdampakWanitaMultipleOf).optional(),
+  "terdampak_anak": zod.number().min(createLaporanBodyTerdampakAnakMin).max(createLaporanBodyTerdampakAnakMax).multipleOf(createLaporanBodyTerdampakAnakMultipleOf).optional(),
+  "terdampak_balita": zod.number().min(createLaporanBodyTerdampakBalitaMin).max(createLaporanBodyTerdampakBalitaMax).multipleOf(createLaporanBodyTerdampakBalitaMultipleOf).optional(),
+  "terdampak_lansia": zod.number().min(createLaporanBodyTerdampakLansiaMin).max(createLaporanBodyTerdampakLansiaMax).multipleOf(createLaporanBodyTerdampakLansiaMultipleOf).optional(),
   "foto_urls": zod.array(zod.string().max(createLaporanBodyFotoUrlsItemMax)).max(createLaporanBodyFotoUrlsMax).optional(),
-  "foto_ktp_url": zod.string().max(createLaporanBodyFotoKtpUrlMax).nullish()
+  "foto_ktp_path": zod.string().max(createLaporanBodyFotoKtpPathMax).regex(createLaporanBodyFotoKtpPathRegExp).nullish().describe('Hasil POST \/uploads\/ktp (bucket privat). foto_ktp_url publik tidak lagi diterima.')
 })
 
 export const CreateLaporanResponse = zod.object({
@@ -122,9 +202,17 @@ export const CreateLaporanResponse = zod.object({
   "kontak_pelapor": zod.string(),
   "jabatan_pelapor": zod.string().nullish(),
   "jumlah_terdampak": zod.number().nullish(),
+  "terdampak_pria": zod.number().optional(),
+  "terdampak_wanita": zod.number().optional(),
+  "terdampak_anak": zod.number().optional(),
+  "terdampak_balita": zod.number().optional(),
+  "terdampak_lansia": zod.number().optional(),
   "lokasi_pengungsian": zod.string().nullish(),
   "foto_urls": zod.array(zod.string()).optional(),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish().describe('Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.'),
+  "user_id": zod.number().nullish(),
   "kronologi": zod.string().nullish(),
   "target_dana": zod.number().nullish(),
   "status": zod.enum(['menunggu', 'terverifikasi', 'selesai']),
@@ -153,9 +241,17 @@ export const GetLaporanByIdResponse = zod.object({
   "kontak_pelapor": zod.string(),
   "jabatan_pelapor": zod.string().nullish(),
   "jumlah_terdampak": zod.number().nullish(),
+  "terdampak_pria": zod.number().optional(),
+  "terdampak_wanita": zod.number().optional(),
+  "terdampak_anak": zod.number().optional(),
+  "terdampak_balita": zod.number().optional(),
+  "terdampak_lansia": zod.number().optional(),
   "lokasi_pengungsian": zod.string().nullish(),
   "foto_urls": zod.array(zod.string()).optional(),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish().describe('Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.'),
+  "user_id": zod.number().nullish(),
   "kronologi": zod.string().nullish(),
   "target_dana": zod.number().nullish(),
   "status": zod.string(),
@@ -216,9 +312,17 @@ export const UpdateLaporanResponse = zod.object({
   "kontak_pelapor": zod.string(),
   "jabatan_pelapor": zod.string().nullish(),
   "jumlah_terdampak": zod.number().nullish(),
+  "terdampak_pria": zod.number().optional(),
+  "terdampak_wanita": zod.number().optional(),
+  "terdampak_anak": zod.number().optional(),
+  "terdampak_balita": zod.number().optional(),
+  "terdampak_lansia": zod.number().optional(),
   "lokasi_pengungsian": zod.string().nullish(),
   "foto_urls": zod.array(zod.string()).optional(),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish().describe('Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.'),
+  "user_id": zod.number().nullish(),
   "kronologi": zod.string().nullish(),
   "target_dana": zod.number().nullish(),
   "status": zod.enum(['menunggu', 'terverifikasi', 'selesai']),
@@ -329,6 +433,8 @@ export const GetRelawanResponseItem = zod.object({
   "alamat": zod.string(),
   "keahlian": zod.array(zod.string()),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish(),
   "status_verifikasi": zod.enum(['menunggu', 'terverifikasi', 'ditolak']),
   "catatan_verifikasi": zod.string().nullish(),
   "created_at": zod.string()
@@ -339,6 +445,12 @@ export const GetRelawanResponse = zod.array(GetRelawanResponseItem)
 /**
  * @summary Daftar sebagai relawan
  */
+export const createRelawanBodyFotoKtpPathMax = 200;
+
+
+export const createRelawanBodyFotoKtpPathRegExp = new RegExp('^ktp/[0-9a-f-]{36}\\.(jpg|png|webp|heic|heif)$');
+
+
 export const CreateRelawanBody = zod.object({
   "nama": zod.string(),
   "nik": zod.string(),
@@ -346,7 +458,7 @@ export const CreateRelawanBody = zod.object({
   "email": zod.string().nullish(),
   "alamat": zod.string(),
   "keahlian": zod.array(zod.string()),
-  "foto_ktp_url": zod.string().nullish()
+  "foto_ktp_path": zod.string().max(createRelawanBodyFotoKtpPathMax).regex(createRelawanBodyFotoKtpPathRegExp).nullish()
 })
 
 export const CreateRelawanResponse = zod.object({
@@ -358,6 +470,8 @@ export const CreateRelawanResponse = zod.object({
   "alamat": zod.string(),
   "keahlian": zod.array(zod.string()),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish(),
   "status_verifikasi": zod.enum(['menunggu', 'terverifikasi', 'ditolak']),
   "catatan_verifikasi": zod.string().nullish(),
   "created_at": zod.string()
@@ -380,6 +494,8 @@ export const GetRelawanByIdResponse = zod.object({
   "alamat": zod.string(),
   "keahlian": zod.array(zod.string()),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish(),
   "status_verifikasi": zod.enum(['menunggu', 'terverifikasi', 'ditolak']),
   "catatan_verifikasi": zod.string().nullish(),
   "created_at": zod.string()
@@ -407,6 +523,8 @@ export const VerifikasiRelawanResponse = zod.object({
   "alamat": zod.string(),
   "keahlian": zod.array(zod.string()),
   "foto_ktp_url": zod.string().nullish(),
+  "foto_ktp_path": zod.string().nullish(),
+  "foto_ktp_signed_url": zod.string().nullish(),
   "status_verifikasi": zod.enum(['menunggu', 'terverifikasi', 'ditolak']),
   "catatan_verifikasi": zod.string().nullish(),
   "created_at": zod.string()

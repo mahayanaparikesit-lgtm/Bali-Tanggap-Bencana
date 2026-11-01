@@ -3,7 +3,9 @@ import { View, Text, TextInput, Pressable, StyleSheet, ScrollView, KeyboardAvoid
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { apiFetch, ApiError } from "@/lib/api";
+import { uploadKtp, UploadError } from "@/lib/upload";
 import { useAuth } from "@/context/AuthContext";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { colors, fonts, spacing, radius } from "@/lib/theme";
@@ -32,7 +34,18 @@ export default function RelawanDaftar() {
   const [nik, setNik] = useState("");
   const [noHp, setNoHp] = useState("");
   const [alamat, setAlamat] = useState("");
-  const [fotoKtpUrl, setFotoKtpUrl] = useState("");
+  // S4: KTP diunggah ke bucket privat, yang disimpan hanya path-nya.
+  const [ktpPath, setKtpPath] = useState<string | null>(null);
+  const [ktpBusy, setKtpBusy] = useState(false);
+  const [ktpError, setKtpError] = useState("");
+  const pilihKtp = async () => {
+    const r = await ImagePicker.launchCameraAsync({ quality: 0.6 }).catch(() => null);
+    if (!r || r.canceled || !r.assets[0]) return;
+    setKtpBusy(true); setKtpError("");
+    try { setKtpPath(await uploadKtp(r.assets[0].uri)); }
+    catch (e) { setKtpError(e instanceof UploadError ? e.message : "Gagal mengunggah foto KTP."); }
+    finally { setKtpBusy(false); }
+  };
   const [keahlian, setKeahlian] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +67,7 @@ export default function RelawanDaftar() {
           nama, nik, no_hp: noHp,
           email: user?.email ?? null,
           alamat, keahlian,
-          foto_ktp_url: fotoKtpUrl || null,
+          foto_ktp_path: ktpPath,
         }),
       });
       queryClient.invalidateQueries({ queryKey: ["relawan-cek-email"] });
@@ -82,8 +95,12 @@ export default function RelawanDaftar() {
         <Field label="Alamat Lengkap *">
           <TextInput style={[styles.input, styles.textarea]} value={alamat} onChangeText={setAlamat} placeholder="Alamat domisili" placeholderTextColor={colors.text3} multiline numberOfLines={3} />
         </Field>
-        <Field label="URL Foto KTP">
-          <TextInput style={styles.input} value={fotoKtpUrl} onChangeText={setFotoKtpUrl} placeholder="Link Google Drive, dll." placeholderTextColor={colors.text3} autoCapitalize="none" />
+        <Field label="Foto KTP">
+          <Pressable style={[styles.input, { justifyContent: "center", alignItems: "center", flexDirection: "row", gap: 8 }]} onPress={pilihKtp} disabled={ktpBusy}>
+            {ktpBusy ? <ActivityIndicator color={colors.text} /> : <Feather name={ktpPath ? "lock" : "camera"} size={18} color={colors.text} />}
+            <Text style={styles.label}>{ktpPath ? "KTP tersimpan privat · ketuk untuk ulangi" : "Foto KTP dengan kamera"}</Text>
+          </Pressable>
+          {!!ktpError && <Text style={{ color: colors.primary, fontSize: 12 }}>{ktpError}</Text>}
         </Field>
 
         <Text style={styles.label}>Keahlian</Text>

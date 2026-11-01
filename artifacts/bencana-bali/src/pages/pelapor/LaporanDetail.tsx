@@ -6,6 +6,7 @@ import { StatusBadge, JenisBadge } from "@/components/StatusBadge";
 import KebutuhanProgress from "@/components/KebutuhanProgress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Phone, User, Calendar, Image, MapPin } from "lucide-react";
+import { KorbanRincian } from "@/components/KorbanRincian";
 
 export default function LaporanDetail() {
   const { id } = useParams<{ id: string }>();
@@ -72,9 +73,10 @@ export default function LaporanDetail() {
                 </div>
               </div>
             )}
+            <KorbanRincian laporan={laporan} />
             <div className="border-t border-border pt-3">
               <p className="mb-1 font-medium">Deskripsi</p>
-              <p className="leading-relaxed text-text2">{laporan.deskripsi}</p>
+              <p className="whitespace-pre-line leading-relaxed text-text2">{laporan.deskripsi}</p>
             </div>
             {laporan.catatan_admin && (
               <div className="border-t border-border pt-3">

@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
 import { laporanTable, kebutuhanTable, penugasanTable } from "@workspace/db/schema";
-import { eq, count } from "drizzle-orm";
-import { requireRole, getAuthContext } from "../../middlewares/auth";
+import { eq, count, desc } from "drizzle-orm";
+import { requireAuth, requireRole, getAuthContext } from "../../middlewares/auth";
 import { CreateLaporanBody, UpdateLaporanBody, GetLaporanQueryParams, CreateKebutuhanBody } from "@workspace/api-zod";
 import { publicLaporan, publicPenugasan } from "../../lib/publicFields";
 import { laporanLimiter } from "../../middlewares/rateLimit";
-import { isOwnUploadUrl } from "../../lib/supabase";
+import { isOwnUploadUrl, isKtpPath, signedKtpUrl } from "../../lib/supabase";
 
 const router = Router();
 
@@ -31,13 +31,45 @@ router.post("/laporan", laporanLimiter, async (req, res) => {
   }
   // Foto harus hasil POST /uploads kita sendiri — jangan simpan URL bebas
   // (bisa menunjuk ke konten pihak ketiga yang lalu tampil di halaman publik).
-  const fotoAsing = [...(result.data.foto_urls ?? []), result.data.foto_ktp_url]
-    .some(u => typeof u === "string" && u !== "" && !isOwnUploadUrl(u));
+  const fotoAsing = (result.data.foto_urls ?? []).some(u => typeof u === "string" && u !== "" && !isOwnUploadUrl(u));
   if (fotoAsing) {
     return res.status(400).json({ message: "Foto harus diunggah lewat aplikasi, bukan tautan dari luar." });
   }
-  const [row] = await db.insert(laporanTable).values(result.data).returning();
-  return res.status(201).json(row);
+  // S4: KTP hanya lewat path bucket privat (POST /uploads/ktp). foto_ktp_url
+  // publik dari klien lama sengaja dibuang skema — laporannya tetap diterima.
+  const { foto_ktp_path } = result.data;
+  if (foto_ktp_path && !isKtpPath(foto_ktp_path)) {
+    return res.status(400).json({ message: "Foto KTP tidak valid. Unggah ulang lewat aplikasi." });
+  }
+
+  // Rincian per kelompok dihitung ulang di server — total dari klien tidak dipercaya.
+  const k = {
+    terdampak_pria: result.data.terdampak_pria ?? 0,
+    terdampak_wanita: result.data.terdampak_wanita ?? 0,
+    terdampak_anak: result.data.terdampak_anak ?? 0,
+    terdampak_balita: result.data.terdampak_balita ?? 0,
+    terdampak_lansia: result.data.terdampak_lansia ?? 0,
+  };
+  const totalKelompok = Object.values(k).reduce((a, b) => a + b, 0);
+
+  const [row] = await db.insert(laporanTable).values({
+    ...result.data,
+    ...k,
+    jumlah_terdampak: totalKelompok > 0 ? totalKelompok : result.data.jumlah_terdampak ?? null,
+    foto_ktp_path: foto_ktp_path ?? null,
+    // S10: laporan dari akun yang login tercatat sebagai miliknya.
+    user_id: getAuthContext(req)?.userId ?? null,
+  }).returning();
+  // Balasan ke pelapor tanpa path KTP / kontak — cukup id & status untuk layar konfirmasi.
+  return res.status(201).json(publicLaporan(row));
+});
+
+// S10 — riwayat "Laporan saya", termasuk yang masih menunggu verifikasi.
+router.get("/laporan/saya", requireAuth, async (req: any, res) => {
+  const rows = await db.select().from(laporanTable)
+    .where(eq(laporanTable.user_id, req.auth.userId))
+    .orderBy(desc(laporanTable.created_at));
+  return res.json(rows.map(publicLaporan));
 });
 
 router.get("/laporan/aktif", async (req, res) => {
@@ -93,9 +125,11 @@ router.get("/laporan/:id", async (req, res) => {
   // yang belum terbit tidak bisa ditebak), dan field dibatasi ke proyeksi aman.
   const auth = getAuthContext(req);
   if (auth?.role === "admin") {
-    return res.json({ ...laporan, penugasan });
+    return res.json({ ...laporan, foto_ktp_signed_url: await signedKtpUrl(laporan.foto_ktp_path), penugasan });
   }
-  if (!PUBLIC_STATUSES.includes(laporan.status)) {
+  // S10: pemilik boleh melihat laporannya sendiri walau masih "menunggu".
+  const milikSendiri = auth != null && laporan.user_id != null && laporan.user_id === auth.userId;
+  if (!milikSendiri && !PUBLIC_STATUSES.includes(laporan.status)) {
     return res.status(404).json({ message: "Laporan tidak ditemukan" });
   }
   return res.json({ ...publicLaporan(laporan), penugasan: penugasan.map(publicPenugasan) });

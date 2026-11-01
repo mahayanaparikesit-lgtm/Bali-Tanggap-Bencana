@@ -10,8 +10,8 @@ import { colors, fonts, spacing, radius, statusTokens } from "@/lib/theme";
 
 export default function PelaporDashboard() {
   const { data: laporan, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ["laporan"],
-    queryFn: () => apiFetch<Laporan[]>("/laporan"),
+    queryKey: ["laporan-saya"],
+    queryFn: () => apiFetch<Laporan[]>("/laporan/saya"),
   });
 
   return (

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatRupiah, formatWaktu, formatKoordinat, JENIS_LABELS } from "@/lib/format";
+import { KorbanRincian } from "@/components/KorbanRincian";
 
 const BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
 
@@ -135,6 +136,8 @@ export function ReportDetailOverlay({ id, onClose }: { id: number; onClose: () =
                 )}
               </div>
             </div>
+
+            <KorbanRincian laporan={laporan} />
 
             <div className="flex flex-col gap-4 rounded-[10px] border border-border bg-surface p-[22px]">
               <h2 className="text-[15px] font-extrabold uppercase tracking-[0.04em] text-text3">Riwayat status</h2>

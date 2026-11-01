@@ -303,7 +303,7 @@ export default function Home() {
               <h2 className="mt-3.5 text-[clamp(34px,4.6vw,56px)] font-extrabold leading-none tracking-[-0.045em]">
                 Uang masuk, uang keluar. <span className="bg-[linear-gradient(transparent_62%,hsl(var(--marigold))_62%_90%,transparent_90%)]">Semua terlihat.</span>
               </h2>
-              <p className="mt-4 max-w-[460px] text-base text-text2">Dana baru dihitung setelah diterima dan dicek admin. Rincian per laporan, daftar donatur (nama disamarkan), dan kebutuhan tiap posko bisa dibuka publik.</p>
+              <p className="mt-4 max-w-[460px] text-base text-text2">Dana baru dihitung setelah diterima dan dicek admin. Rincian per laporan, daftar donatur (nama tampil sesuai pilihan donatur), dan kebutuhan tiap posko bisa dibuka publik.</p>
               <Link href="/transparansi" className="mt-7 inline-flex items-center gap-2 rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground hover:bg-primary-hover hover:no-underline">
                 Buka transparansi <ArrowRight size={17} />
               </Link>

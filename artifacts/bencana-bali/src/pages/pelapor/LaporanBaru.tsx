@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
-import { getGetLaporanQueryKey } from "@workspace/api-client-react";
+import { getGetLaporanQueryKey, getGetLaporanSayaQueryKey } from "@workspace/api-client-react";
 import {
   ArrowRight, Beef, Check, ChevronLeft, Construction, HeartPulse, History, House, Info, LifeBuoy,
   LocateFixed, Minus, PhoneCall, Plus, RefreshCw, Send, ShieldCheck, Siren, Tent, Utensils, WifiOff, X, ZapOff,
@@ -11,6 +11,7 @@ import { Brand } from "@/components/brand/Brand";
 import { Ilustrasi, adeganDariJenis } from "@/components/Ilustrasi";
 import { LokasiPicker, jarakMeter, type Titik } from "@/components/LokasiPicker";
 import { PhotoUploadField } from "@/components/PhotoUploadField";
+import { KtpUploadField } from "@/components/KtpUploadField";
 import { StatusBadge } from "@/components/StatusBadge";
 import { cn } from "@/lib/utils";
 
@@ -19,11 +20,11 @@ import { cn } from "@/lib/utils";
 // otomatis dari pilihan pelapor.
 //
 // Catatan data:
-// - Kolom korban per kelompok (terdampak_pria, dst) BELUM ada di database —
-//   menunggu migrasi di database dev. Sementara total dikirim ke
-//   jumlah_terdampak dan rinciannya ikut di deskripsi.
-// - Foto KTP masih opsional: sampai S4 (bucket privat) selesai, file KTP masuk
-//   bucket publik, jadi belum boleh diwajibkan.
+// - Warga terdampak dikirim per kelompok (terdampak_pria, dst); total
+//   jumlah_terdampak dihitung ulang di server.
+// - Foto KTP diunggah ke bucket PRIVAT (S4) lewat KtpUploadField — yang dikirim
+//   hanya foto_ktp_path. Masih opsional; PRD § 7 menyebut wajib, cukup ubah
+//   `halangan` langkah 5 bila ingin diwajibkan.
 
 const BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
 const DRAFT_KEY = "balirief-lapor-draft-v2";
@@ -85,7 +86,7 @@ type Draft = {
   korban: Record<KelompokKey, number>;
   hp: string;
   nama: string;
-  ktp: string[];
+  ktpPath: string | null;
   setuju: boolean;
   disimpan: string | null;
 };
@@ -93,7 +94,7 @@ type Draft = {
 const kosong = (nama = ""): Draft => ({
   step: 1, jenis: null, bahaya: null, kabupaten: null, detail: "", titik: null, gps: null, akurasi: null,
   foto: [], kondisi: [], pengungsian: "", catatan: "", korban: { pria: 0, wanita: 0, anak: 0, balita: 0, lansia: 0 },
-  hp: "", nama, ktp: [], setuju: false, disimpan: null,
+  hp: "", nama, ktpPath: null, setuju: false, disimpan: null,
 });
 
 const jam = () => new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
@@ -107,14 +108,11 @@ function bacaDraft(): Draft | null {
 }
 
 export function susunDeskripsi(d: Draft) {
-  const total = Object.values(d.korban).reduce((a, b) => a + b, 0);
   const bahaya = BAHAYA.find(b => b.k === d.bahaya);
   const kondisi = d.kondisi.map(k => KONDISI.find(x => x.k === k)?.l.toLowerCase()).filter(Boolean);
-  const rincian = KELOMPOK.filter(g => d.korban[g.k]).map(g => `${g.l.toLowerCase()} ${d.korban[g.k]}`);
   const baris = [
     `${labelJenis(d.jenis)}${bahaya ? ` — tingkat bahaya: ${bahaya.l.toLowerCase()}` : ""}.`,
     kondisi.length ? `Kondisi: ${kondisi.join(", ")}.` : "Kondisi lapangan belum dipilih pelapor.",
-    total ? `Warga terdampak: ${rincian.join(", ")} (total ${total}).` : "Jumlah warga terdampak belum diketahui.",
   ];
   if (d.catatan.trim()) baris.push(`Catatan pelapor: ${d.catatan.trim()}`);
   return baris.join("\n");
@@ -208,9 +206,14 @@ export default function LaporanBaru() {
           nama_pelapor: d.nama.trim() || "Anonim",
           kontak_pelapor: nomorHp(d.hp),
           jumlah_terdampak: total || null,
+          terdampak_pria: d.korban.pria,
+          terdampak_wanita: d.korban.wanita,
+          terdampak_anak: d.korban.anak,
+          terdampak_balita: d.korban.balita,
+          terdampak_lansia: d.korban.lansia,
           lokasi_pengungsian: d.kondisi.includes("mengungsi") && d.pengungsian.trim() ? d.pengungsian.trim().slice(0, 300) : null,
           foto_urls: d.foto,
-          foto_ktp_url: d.ktp[0] ?? null,
+          foto_ktp_path: d.ktpPath,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -220,6 +223,7 @@ export default function LaporanBaru() {
       }
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* abaikan */ }
       queryClient.invalidateQueries({ queryKey: getGetLaporanQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetLaporanSayaQueryKey() });
       setFase({ t: "terkirim", id: body.id });
     } catch {
       setFase({ t: "gagal", offline: true, pesan: "Koneksi terputus." });
@@ -449,8 +453,8 @@ export default function LaporanBaru() {
                   <input className="h-[52px] w-full rounded-[14px] border-[1.5px] border-border-strong bg-card px-3.5 text-[14.5px] font-semibold outline-none focus:border-primary"
                     placeholder="Anonim" value={d.nama} maxLength={100} onChange={e => ubah({ nama: e.target.value })} />
                   <div className="mt-5">
-                    <PhotoUploadField label="Foto KTP (opsional)" urls={d.ktp} onChange={u => ubah({ ktp: u })} maxFiles={1}
-                      hint="Mempercepat verifikasi identitas. Hanya dibuka admin Pusdalops, tidak pernah tampil publik." />
+                    <KtpUploadField label="Foto KTP (opsional)" path={d.ktpPath} onChange={p => ubah({ ktpPath: p })}
+                      hint="Mempercepat verifikasi identitas. Disimpan privat — hanya admin Pusdalops yang bisa membukanya, lewat tautan sementara." />
                   </div>
                   <Label>Periksa sebelum kirim</Label>
                   <div className="rounded-[18px] border border-border bg-card px-3.5">

@@ -11,6 +11,8 @@ export const relawanTable = pgTable("relawan", {
   alamat: text("alamat").notNull(),
   keahlian: json("keahlian").$type<string[]>().default([]),
   foto_ktp_url: text("foto_ktp_url"),
+  // S4: path objek di bucket privat "ktp-privat" (lihat laporan.foto_ktp_path).
+  foto_ktp_path: text("foto_ktp_path"),
   status_verifikasi: text("status_verifikasi").notNull().default("menunggu"),
   catatan_verifikasi: text("catatan_verifikasi"),
   created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

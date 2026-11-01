@@ -51,11 +51,25 @@ export interface Laporan {
   jabatan_pelapor?: string | null;
   /** @nullable */
   jumlah_terdampak?: number | null;
+  terdampak_pria?: number;
+  terdampak_wanita?: number;
+  terdampak_anak?: number;
+  terdampak_balita?: number;
+  terdampak_lansia?: number;
   /** @nullable */
   lokasi_pengungsian?: string | null;
   foto_urls?: string[];
   /** @nullable */
   foto_ktp_url?: string | null;
+  /** @nullable */
+  foto_ktp_path?: string | null;
+  /**
+     * Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.
+     * @nullable
+     */
+  foto_ktp_signed_url?: string | null;
+  /** @nullable */
+  user_id?: number | null;
   /** @nullable */
   kronologi?: string | null;
   /** @nullable */
@@ -135,11 +149,25 @@ export interface LaporanDetail {
   jabatan_pelapor?: string | null;
   /** @nullable */
   jumlah_terdampak?: number | null;
+  terdampak_pria?: number;
+  terdampak_wanita?: number;
+  terdampak_anak?: number;
+  terdampak_balita?: number;
+  terdampak_lansia?: number;
   /** @nullable */
   lokasi_pengungsian?: string | null;
   foto_urls?: string[];
   /** @nullable */
   foto_ktp_url?: string | null;
+  /** @nullable */
+  foto_ktp_path?: string | null;
+  /**
+     * Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.
+     * @nullable
+     */
+  foto_ktp_signed_url?: string | null;
+  /** @nullable */
+  user_id?: number | null;
   /** @nullable */
   kronologi?: string | null;
   /** @nullable */
@@ -235,15 +263,42 @@ export interface LaporanInput {
      */
   lokasi_pengungsian?: string | null;
   /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_pria?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_wanita?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_anak?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_balita?: number;
+  /**
+     * @minimum 0
+     * @maximum 100000
+     */
+  terdampak_lansia?: number;
+  /**
      * @maxItems 10
      * @items.maxLength 500
      */
   foto_urls?: string[];
   /**
-     * @maxLength 500
+     * Hasil POST /uploads/ktp (bucket privat). foto_ktp_url publik tidak lagi diterima.
+     * @maxLength 200
      * @nullable
+     * @pattern ^ktp/[0-9a-f-]{36}\.(jpg|png|webp|heic|heif)$
      */
-  foto_ktp_url?: string | null;
+  foto_ktp_path?: string | null;
 }
 
 export type LaporanUpdateStatus = typeof LaporanUpdateStatus[keyof typeof LaporanUpdateStatus];
@@ -329,6 +384,10 @@ export interface Relawan {
   keahlian: string[];
   /** @nullable */
   foto_ktp_url?: string | null;
+  /** @nullable */
+  foto_ktp_path?: string | null;
+  /** @nullable */
+  foto_ktp_signed_url?: string | null;
   status_verifikasi: RelawanStatusVerifikasi;
   /** @nullable */
   catatan_verifikasi?: string | null;
@@ -343,8 +402,12 @@ export interface RelawanInput {
   email?: string | null;
   alamat: string;
   keahlian: string[];
-  /** @nullable */
-  foto_ktp_url?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     * @pattern ^ktp/[0-9a-f-]{36}\.(jpg|png|webp|heic|heif)$
+     */
+  foto_ktp_path?: string | null;
 }
 
 export type VerifikasiRelawanInputStatusVerifikasi = typeof VerifikasiRelawanInputStatusVerifikasi[keyof typeof VerifikasiRelawanInputStatusVerifikasi];
@@ -543,6 +606,10 @@ export interface DashboardStatistik {
   kebutuhan_terpenuhi: number;
   kebutuhan_total: number;
 }
+
+export type UploadKtp200 = {
+  path: string;
+};
 
 export type GetLaporanParams = {
 status?: GetLaporanStatus;

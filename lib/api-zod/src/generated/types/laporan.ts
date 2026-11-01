@@ -24,11 +24,25 @@ export interface Laporan {
   jabatan_pelapor?: string | null;
   /** @nullable */
   jumlah_terdampak?: number | null;
+  terdampak_pria?: number;
+  terdampak_wanita?: number;
+  terdampak_anak?: number;
+  terdampak_balita?: number;
+  terdampak_lansia?: number;
   /** @nullable */
   lokasi_pengungsian?: string | null;
   foto_urls?: string[];
   /** @nullable */
   foto_ktp_url?: string | null;
+  /** @nullable */
+  foto_ktp_path?: string | null;
+  /**
+     * Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.
+     * @nullable
+     */
+  foto_ktp_signed_url?: string | null;
+  /** @nullable */
+  user_id?: number | null;
   /** @nullable */
   kronologi?: string | null;
   /** @nullable */

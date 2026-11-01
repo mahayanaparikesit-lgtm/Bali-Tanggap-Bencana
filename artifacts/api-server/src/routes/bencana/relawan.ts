@@ -4,6 +4,7 @@ import { relawanTable, usersTable } from "@workspace/db/schema";
 import { eq, or } from "drizzle-orm";
 import { requireAuth, requireRole } from "../../middlewares/auth";
 import { CreateRelawanBody, VerifikasiRelawanBody, GetRelawanQueryParams } from "@workspace/api-zod";
+import { isKtpPath, signedKtpUrl } from "../../lib/supabase";
 
 const router = Router();
 
@@ -13,7 +14,8 @@ router.get("/relawan", requireRole(["admin"]), async (req, res) => {
   const rows = await db.select().from(relawanTable)
     .where(status_verifikasi ? eq(relawanTable.status_verifikasi, status_verifikasi) : undefined)
     .orderBy(relawanTable.created_at);
-  return res.json(rows.reverse());
+  // Admin: tautan sementara ke KTP di bucket privat.
+  return res.json(await Promise.all(rows.reverse().map(async r => ({ ...r, foto_ktp_signed_url: await signedKtpUrl(r.foto_ktp_path) }))));
 });
 
 // Relawan tidak punya user_id FK ke users — pemilik data dicocokkan lewat email
@@ -45,6 +47,10 @@ router.post("/relawan", async (req, res) => {
     return res.status(400).json({ message: "Data tidak valid", errors: result.error.flatten() });
   }
   const body = result.data;
+  // S4: KTP relawan juga hanya lewat bucket privat (POST /uploads/ktp).
+  if (body.foto_ktp_path && !isKtpPath(body.foto_ktp_path)) {
+    return res.status(400).json({ message: "Foto KTP tidak valid. Unggah ulang lewat aplikasi." });
+  }
 
   // Cegah duplikat berdasarkan NIK atau email
   const existing = await db.select().from(relawanTable).where(
@@ -76,7 +82,7 @@ router.get("/relawan/:id", requireAuth, async (req: any, res) => {
   if (req.auth.role !== "admin" && !sameEmail(row.email, await emailAkun(req))) {
     return res.status(403).json({ message: "Tidak diizinkan" });
   }
-  return res.json(row);
+  return res.json({ ...row, foto_ktp_signed_url: await signedKtpUrl(row.foto_ktp_path) });
 });
 
 const handleVerifikasiRelawan = async (req: any, res: any) => {

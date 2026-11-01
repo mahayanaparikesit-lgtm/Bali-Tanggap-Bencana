@@ -47,6 +47,46 @@ paths:
         "400":
           description: Berkas tidak valid (bukan gambar / terlalu besar)
 
+  /uploads/ktp:
+    post:
+      operationId: uploadKtp
+      tags: [uploads]
+      summary: Unggah satu foto KTP ke bucket PRIVAT (S4)
+      description: >
+        multipart/form-data dengan field `file` (satu berkas). Mengembalikan
+        `path` (bukan URL) untuk dikirim sebagai `foto_ktp_path`. File hanya
+        bisa dibuka admin lewat signed URL. Fetch manual di klien, sama seperti /uploads.
+      responses:
+        "200":
+          description: Path objek di bucket privat
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [path]
+                properties:
+                  path:
+                    type: string
+        "400":
+          description: Berkas tidak valid
+
+  /laporan/saya:
+    get:
+      operationId: getLaporanSaya
+      tags: [laporan]
+      summary: Riwayat laporan milik akun yang sedang login (S10), termasuk yang masih menunggu
+      responses:
+        "200":
+          description: Daftar laporan milik pengguna, terbaru dulu
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Laporan"
+        "401":
+          description: Belum login
+
   /healthz:
     get:
       operationId: healthCheck
@@ -588,6 +628,16 @@ components:
           type: ["string", "null"]
         jumlah_terdampak:
           type: ["integer", "null"]
+        terdampak_pria:
+          type: integer
+        terdampak_wanita:
+          type: integer
+        terdampak_anak:
+          type: integer
+        terdampak_balita:
+          type: integer
+        terdampak_lansia:
+          type: integer
         lokasi_pengungsian:
           type: ["string", "null"]
         foto_urls:
@@ -596,6 +646,13 @@ components:
             type: string
         foto_ktp_url:
           type: ["string", "null"]
+        foto_ktp_path:
+          type: ["string", "null"]
+        foto_ktp_signed_url:
+          type: ["string", "null"]
+          description: Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.
+        user_id:
+          type: ["integer", "null"]
         kronologi:
           type: ["string", "null"]
         target_dana:
@@ -636,6 +693,16 @@ components:
           type: ["string", "null"]
         jumlah_terdampak:
           type: ["integer", "null"]
+        terdampak_pria:
+          type: integer
+        terdampak_wanita:
+          type: integer
+        terdampak_anak:
+          type: integer
+        terdampak_balita:
+          type: integer
+        terdampak_lansia:
+          type: integer
         lokasi_pengungsian:
           type: ["string", "null"]
         foto_urls:
@@ -644,6 +711,13 @@ components:
             type: string
         foto_ktp_url:
           type: ["string", "null"]
+        foto_ktp_path:
+          type: ["string", "null"]
+        foto_ktp_signed_url:
+          type: ["string", "null"]
+          description: Hanya untuk admin — tautan sementara (10 menit) ke foto KTP di bucket privat.
+        user_id:
+          type: ["integer", "null"]
         kronologi:
           type: ["string", "null"]
         target_dana:
@@ -734,15 +808,42 @@ components:
         lokasi_pengungsian:
           type: ["string", "null"]
           maxLength: 300
+        terdampak_pria:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          multipleOf: 1
+        terdampak_wanita:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          multipleOf: 1
+        terdampak_anak:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          multipleOf: 1
+        terdampak_balita:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          multipleOf: 1
+        terdampak_lansia:
+          type: integer
+          minimum: 0
+          maximum: 100000
+          multipleOf: 1
         foto_urls:
           type: array
           maxItems: 10
           items:
             type: string
             maxLength: 500
-        foto_ktp_url:
+        foto_ktp_path:
           type: ["string", "null"]
-          maxLength: 500
+          maxLength: 200
+          pattern: '^ktp/[0-9a-f-]{36}\.(jpg|png|webp|heic|heif)$'
+          description: Hasil POST /uploads/ktp (bucket privat). foto_ktp_url publik tidak lagi diterima.
 
     LaporanUpdate:
       type: object
@@ -837,6 +938,10 @@ components:
             type: string
         foto_ktp_url:
           type: ["string", "null"]
+        foto_ktp_path:
+          type: ["string", "null"]
+        foto_ktp_signed_url:
+          type: ["string", "null"]
         status_verifikasi:
           type: string
           enum: [menunggu, terverifikasi, ditolak]
@@ -863,8 +968,10 @@ components:
           type: array
           items:
             type: string
-        foto_ktp_url:
+        foto_ktp_path:
           type: ["string", "null"]
+          maxLength: 200
+          pattern: '^ktp/[0-9a-f-]{36}\.(jpg|png|webp|heic|heif)$'
 
     VerifikasiRelawanInput:
       type: object

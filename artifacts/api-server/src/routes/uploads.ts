@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import multer from "multer";
 import crypto from "node:crypto";
-import { supabase, UPLOAD_BUCKET } from "../lib/supabase";
+import { supabase, UPLOAD_BUCKET, KTP_BUCKET, ensureKtpBucket } from "../lib/supabase";
 import { uploadLimiter } from "../middlewares/rateLimit";
 
 const ALLOWED_MIME: Record<string, string> = {
@@ -60,6 +60,27 @@ router.post("/uploads", uploadLimiter, (req: any, res: any) => {
     } catch (uploadError) {
       req.log?.error({ err: uploadError }, "Supabase Storage upload failed");
       return res.status(502).json({ message: "Gagal menyimpan foto ke penyimpanan. Coba lagi." });
+    }
+  });
+});
+
+// S4 — satu foto KTP ke bucket privat. Publik (pelapor tanpa akun juga perlu),
+// dengan batas yang sama. Yang dikembalikan path, bukan URL: klien tidak
+// pernah bisa membuka ulang fotonya, hanya admin lewat signed URL.
+router.post("/uploads/ktp", uploadLimiter, (req: any, res: any) => {
+  upload.single("file")(req, res, async (err: any) => {
+    if (err) return res.status(400).json({ message: err.message || "Gagal mengunggah berkas." });
+    const file = req.file as Express.Multer.File | undefined;
+    if (!file) return res.status(400).json({ message: "Tidak ada berkas yang diunggah." });
+    try {
+      await ensureKtpBucket();
+      const objectPath = `ktp/${crypto.randomUUID()}${ALLOWED_MIME[file.mimetype] ?? ""}`;
+      const { error } = await supabase.storage.from(KTP_BUCKET).upload(objectPath, file.buffer, { contentType: file.mimetype, upsert: false });
+      if (error) throw error;
+      return res.json({ path: objectPath });
+    } catch (uploadError) {
+      req.log?.error({ err: uploadError }, "Upload KTP ke bucket privat gagal");
+      return res.status(502).json({ message: "Gagal menyimpan foto KTP. Coba lagi." });
     }
   });
 });

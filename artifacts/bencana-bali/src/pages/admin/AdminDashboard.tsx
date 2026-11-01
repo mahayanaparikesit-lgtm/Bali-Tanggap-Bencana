@@ -204,14 +204,14 @@ export default function AdminDashboard() {
                     <span className={cn("font-mono text-[13.5px]", w.urgent ? "font-semibold text-primary" : "text-text2")}>{w.label}</span>
                     <span className="flex flex-col gap-[3px]">
                       <b className="text-[14.5px] font-bold">{r.nama}</b>
-                      <span className="text-[12.5px] text-text2">{r.alamat}{r.foto_ktp_url ? " · KTP terlampir" : " · belum unggah KTP"}</span>
+                      <span className="text-[12.5px] text-text2">{r.alamat}{(r.foto_ktp_signed_url ?? r.foto_ktp_url ?? undefined) ? " · KTP terlampir" : " · belum unggah KTP"}</span>
                     </span>
                     <span className="text-[13px] text-text2">{(r.keahlian ?? []).join(", ") || "—"}</span>
                     <span className="justify-self-start"><StatusBadge status={r.status_verifikasi} /></span>
                     <span className="flex items-center gap-2">
                       <ActionBtn variant="primary" onClick={() => aksiRelawan(r.id, "terverifikasi")} disabled={verifikasiRelawan.isPending}>Verifikasi</ActionBtn>
                       <ActionBtn onClick={() => aksiRelawan(r.id, "ditolak")} disabled={verifikasiRelawan.isPending}>Tolak</ActionBtn>
-                      {r.foto_ktp_url && <a href={r.foto_ktp_url} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold hover:no-underline">Berkas</a>}
+                      {(r.foto_ktp_signed_url ?? r.foto_ktp_url ?? undefined) && <a href={(r.foto_ktp_signed_url ?? r.foto_ktp_url ?? undefined)} target="_blank" rel="noopener noreferrer" className="text-[13px] font-bold hover:no-underline">Berkas</a>}
                     </span>
                   </div>
                 );

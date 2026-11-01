@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatRupiah } from "@/lib/format";
 import { MapPin, Users, Phone, User, CheckCircle2, XCircle, Plus, ClipboardList, Banknote, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { KorbanRincian } from "@/components/KorbanRincian";
 
 const KATEGORI_OPTIONS = ["pangan", "sandang", "medis", "tempat_tinggal", "air_bersih", "lainnya"];
 const KATEGORI_LABELS: Record<string, string> = {
@@ -163,6 +164,7 @@ export default function AdminLaporanDetail() {
                 <span className="font-mono">{laporan.jumlah_terdampak.toLocaleString("id-ID")}</span> jiwa terdampak
               </div>
             )}
+            <KorbanRincian laporan={laporan} className="mt-1" />
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-text3" />
               <span>{laporan.nama_pelapor}{laporan.jabatan_pelapor ? ` — ${laporan.jabatan_pelapor}` : ""}</span>
@@ -172,14 +174,14 @@ export default function AdminLaporanDetail() {
               <span className="font-mono">{laporan.kontak_pelapor}</span>
             </div>
             <div className="mt-2 border-t border-border pt-2">
-              <p className="text-text2">{laporan.deskripsi}</p>
+              <p className="whitespace-pre-line text-text2">{laporan.deskripsi}</p>
             </div>
           </CardContent>
         </Card>
 
         {/* Dokumentasi & verifikasi identitas — foto KTP cuma tampil di sini
             (admin), tidak pernah dikirim ke halaman publik/transparansi. */}
-        {((laporan.foto_urls?.length ?? 0) > 0 || laporan.foto_ktp_url) && (
+        {((laporan.foto_urls?.length ?? 0) > 0 || (laporan.foto_ktp_signed_url ?? laporan.foto_ktp_url ?? undefined)) && (
           <Card className="rounded-xl border-border bg-surface shadow-none">
             <CardHeader className="border-b border-border bg-surface-2 px-[18px] py-3">
               <CardTitle className="text-sm font-extrabold">Dokumentasi & verifikasi identitas</CardTitle>
@@ -197,11 +199,11 @@ export default function AdminLaporanDetail() {
                   </div>
                 </div>
               )}
-              {laporan.foto_ktp_url && (
+              {(laporan.foto_ktp_signed_url ?? laporan.foto_ktp_url ?? undefined) && (
                 <div>
                   <p className="mb-2 text-xs font-bold text-text3">Foto KTP pelapor — hanya untuk admin, jangan disebarkan</p>
-                  <a href={laporan.foto_ktp_url} target="_blank" rel="noopener noreferrer" className="inline-block">
-                    <img src={laporan.foto_ktp_url} alt="Foto KTP pelapor" className="h-40 rounded-lg border border-border object-cover hover:opacity-90" />
+                  <a href={(laporan.foto_ktp_signed_url ?? laporan.foto_ktp_url ?? undefined)} target="_blank" rel="noopener noreferrer" className="inline-block">
+                    <img src={(laporan.foto_ktp_signed_url ?? laporan.foto_ktp_url ?? undefined)} alt="Foto KTP pelapor" className="h-40 rounded-lg border border-border object-cover hover:opacity-90" />
                   </a>
                 </div>
               )}

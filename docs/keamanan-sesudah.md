@@ -89,3 +89,16 @@ Branch `fix/keamanan-data`. Commit S1–S3 dan S5–S9. S4 dan S10 belum dikerja
 - **S10 (riwayat pelapor)**: belum disetujui; juga butuh migrasi.
 - **File KTP lama** masih ada di bucket publik `laporan-images` dan tetap bisa dibuka lewat URL-nya sampai dipindah (bagian dari S4).
 - `GET /penugasan` masih bisa dibaca semua akun yang login, termasuk `link_grup` dan `qr_code_url` penugasan relawan lain (di luar daftar S, risiko rendah).
+
+## Lanjutan (setelah database dimigrasi)
+
+| Item | Hasil |
+|---|---|
+| S4 | KTP pelapor & relawan diunggah ke bucket **privat** `ktp-privat` lewat `POST /uploads/ktp`; database menyimpan `foto_ktp_path`, admin membuka lewat signed URL 10 menit (`foto_ktp_signed_url`). `foto_ktp_url` publik dari klien lama dibuang skema (laporan tetap diterima). Tidak ada KTP lama di bucket publik yang tercatat di database (3 entri relawan berisi tautan contoh seed). |
+| S10 | `laporan.user_id` diisi saat pelapor login; `GET /laporan/saya`; pemilik boleh membuka laporannya sendiri yang masih "menunggu". Web & mobile memakai endpoint ini. |
+| Penugasan | `GET /penugasan` tidak lagi mengirim link grup/QR/catatan relawan lain ke non-admin. |
+| Donasi | Nama donatur tampil sesuai pilihan (`tampilkan_nama`); progres kebutuhan barang bertambah saat admin menerima, berkurang bila dibatalkan. |
+
+Diuji end-to-end terhadap API lokal + database (23/23 lolos, data uji dihapus otomatis): unggah KTP privat, URL publik KTP ditolak storage, signed URL admin, total korban dihitung server, riwayat & akses pemilik, progres barang naik/turun sesuai status, nama donatur anonim/tampil.
+
+Belum: penghapusan otomatis KTP 30 hari setelah verifikasi (butuh job terjadwal).

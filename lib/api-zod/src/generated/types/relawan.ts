@@ -18,6 +18,10 @@ export interface Relawan {
   keahlian: string[];
   /** @nullable */
   foto_ktp_url?: string | null;
+  /** @nullable */
+  foto_ktp_path?: string | null;
+  /** @nullable */
+  foto_ktp_signed_url?: string | null;
   status_verifikasi: RelawanStatusVerifikasi;
   /** @nullable */
   catatan_verifikasi?: string | null;

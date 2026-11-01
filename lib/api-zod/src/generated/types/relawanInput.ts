@@ -14,6 +14,10 @@ export interface RelawanInput {
   email?: string | null;
   alamat: string;
   keahlian: string[];
-  /** @nullable */
-  foto_ktp_url?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     * @pattern ^ktp/[0-9a-f-]{36}\.(jpg|png|webp|heic|heif)$
+     */
+  foto_ktp_path?: string | null;
 }
