@@ -4,11 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getGetLaporanQueryKey, getGetLaporanSayaQueryKey } from "@workspace/api-client-react";
 import {
   ArrowRight, Beef, Check, ChevronLeft, Construction, HeartPulse, History, House, Info, LifeBuoy,
-  LocateFixed, Minus, PhoneCall, Plus, RefreshCw, Send, ShieldCheck, Siren, Tent, Utensils, WifiOff, X, ZapOff,
+  LocateFixed, Minus, Eye, PhoneCall, Plus, RefreshCw, Send, ShieldCheck, Siren, Tent, Utensils, WifiOff, X, ZapOff,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { Brand } from "@/components/brand/Brand";
-import { Ilustrasi, adeganDariJenis } from "@/components/Ilustrasi";
+import { FotoBencana } from "@/components/Ilustrasi";
 import { LokasiPicker, jarakMeter, type Titik } from "@/components/LokasiPicker";
 import { PhotoUploadField } from "@/components/PhotoUploadField";
 import { KtpUploadField } from "@/components/KtpUploadField";
@@ -35,9 +35,9 @@ const JENIS = [
 ] as const;
 
 const BAHAYA = [
-  { k: "jiwa", l: "Mengancam jiwa", d: "Ada orang dalam bahaya sekarang", s: "act" },
-  { k: "serius", l: "Serius", d: "Rumah atau akses rusak, belum ada korban jiwa", s: "wait" },
-  { k: "ringan", l: "Ringan", d: "Dampak kecil, perlu dipantau", s: "ver" },
+  { k: "jiwa", l: "Mengancam jiwa", d: "Ada orang dalam bahaya sekarang", ikon: Siren, warna: "bg-urgent text-white" },
+  { k: "serius", l: "Serius", d: "Rumah atau akses rusak, belum ada korban jiwa", ikon: House, warna: "bg-[#E7801C] text-white" },
+  { k: "ringan", l: "Ringan", d: "Dampak kecil, perlu dipantau", ikon: Eye, warna: "bg-status-ver-fg text-white" },
 ] as const;
 
 const KABUPATEN = ["Badung", "Bangli", "Buleleng", "Denpasar", "Gianyar", "Jembrana", "Karangasem", "Klungkung", "Tabanan"];
@@ -73,6 +73,8 @@ const STEPS = ["Jenis bencana", "Lokasi", "Foto & kondisi", "Warga terdampak", "
 type Draft = {
   step: number;
   jenis: string | null;
+  // Diisi pelapor bila memilih "Lainnya" (mis. hujan abu, kekeringan).
+  jenisLain: string;
   bahaya: string | null;
   kabupaten: string | null;
   detail: string;
@@ -92,13 +94,14 @@ type Draft = {
 };
 
 const kosong = (nama = ""): Draft => ({
-  step: 1, jenis: null, bahaya: null, kabupaten: null, detail: "", titik: null, gps: null, akurasi: null,
+  step: 1, jenis: null, jenisLain: "", bahaya: null, kabupaten: null, detail: "", titik: null, gps: null, akurasi: null,
   foto: [], kondisi: [], pengungsian: "", catatan: "", korban: { pria: 0, wanita: 0, anak: 0, balita: 0, lansia: 0 },
   hp: "", nama, ktpPath: null, setuju: false, disimpan: null,
 });
 
 const jam = () => new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
-const labelJenis = (k: string | null) => JENIS.find(j => j[0] === k)?.[1] ?? "Kejadian";
+const labelJenis = (k: string | null, lain?: string) =>
+  k === "lainnya" && lain?.trim() ? lain.trim().replace(/^./, c => c.toUpperCase()) : JENIS.find(j => j[0] === k)?.[1] ?? "Kejadian";
 
 function bacaDraft(): Draft | null {
   try {
@@ -111,7 +114,7 @@ export function susunDeskripsi(d: Draft) {
   const bahaya = BAHAYA.find(b => b.k === d.bahaya);
   const kondisi = d.kondisi.map(k => KONDISI.find(x => x.k === k)?.l.toLowerCase()).filter(Boolean);
   const baris = [
-    `${labelJenis(d.jenis)}${bahaya ? ` — tingkat bahaya: ${bahaya.l.toLowerCase()}` : ""}.`,
+    `${labelJenis(d.jenis, d.jenisLain)}${bahaya ? ` — tingkat bahaya: ${bahaya.l.toLowerCase()}` : ""}.`,
     kondisi.length ? `Kondisi: ${kondisi.join(", ")}.` : "Kondisi lapangan belum dipilih pelapor.",
   ];
   if (d.catatan.trim()) baris.push(`Catatan pelapor: ${d.catatan.trim()}`);
@@ -162,7 +165,9 @@ export default function LaporanBaru() {
   const total = Object.values(d.korban).reduce((a, b) => a + b, 0);
 
   const halangan = useMemo(() => {
-    if (d.step === 1) return !d.jenis ? "Pilih jenis bencana dulu" : !d.bahaya ? "Pilih tingkat bahaya" : "";
+    if (d.step === 1) return !d.jenis ? "Pilih jenis bencana dulu"
+      : d.jenis === "lainnya" && d.jenisLain.trim().length < 3 ? "Tulis jenis bencananya"
+      : !d.bahaya ? "Pilih tingkat bahaya" : "";
     if (d.step === 2) return d.kabupaten || d.detail.trim().length >= 4 ? "" : "Pilih kabupaten/kota atau tulis nama tempat";
     if (d.step === 5) {
       if (d.hp.replace(/\D/g, "").length < 9) return "Isi nomor HP (wajib)";
@@ -190,7 +195,7 @@ export default function LaporanBaru() {
 
   async function kirim() {
     setFase({ t: "kirim" });
-    const judul = `${labelJenis(d.jenis)} di ${d.detail.trim() || d.kabupaten}`.slice(0, 200);
+    const judul = `${labelJenis(d.jenis, d.jenisLain)} di ${d.detail.trim() || d.kabupaten}`.slice(0, 200);
     try {
       const res = await fetch(`${BASE}/api/laporan`, {
         method: "POST",
@@ -305,19 +310,31 @@ export default function LaporanBaru() {
                     {JENIS.map(([k, l]) => (
                       <button key={k} onClick={() => ubah({ jenis: k })} aria-pressed={d.jenis === k}
                         className={cn("relative overflow-hidden rounded-2xl border-2 bg-card text-left", d.jenis === k ? "border-primary ring-2 ring-primary" : "border-border")}>
-                        <Ilustrasi adegan={adeganDariJenis(k)} className="h-[76px] w-full" />
+                        <FotoBencana jenis={k} label={false} className="h-[84px] w-full" />
                         <b className="block px-3 pb-3 pt-2.5 text-[13.5px] font-extrabold">{l}</b>
                         {d.jenis === k && <span className="absolute right-2 top-2 grid h-[26px] w-[26px] place-items-center rounded-full bg-primary text-marigold"><Check size={15} /></span>}
                       </button>
                     ))}
                   </div>
+                  {d.jenis === "lainnya" && (
+                    <>
+                      <Label hint="wajib untuk Lainnya" wajib>Bencana apa yang terjadi?</Label>
+                      <input autoFocus className="h-[52px] w-full rounded-[14px] border-[1.5px] border-border-strong bg-card px-3.5 text-[14.5px] font-semibold outline-none focus:border-primary"
+                        placeholder="Contoh: hujan abu, kekeringan, pohon tumbang" value={d.jenisLain} maxLength={60} onChange={e => ubah({ jenisLain: e.target.value })} />
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {["Hujan abu", "Kekeringan", "Pohon tumbang", "Abrasi pantai", "Wabah penyakit"].map(c => (
+                          <Chip key={c} on={d.jenisLain === c} onClick={() => ubah({ jenisLain: c })}>{c}</Chip>
+                        ))}
+                      </div>
+                    </>
+                  )}
                   <Label>Seberapa berbahaya?</Label>
                   <div className="space-y-2">
                     {BAHAYA.map(b => (
                       <button key={b.k} onClick={() => ubah({ bahaya: b.k })} aria-pressed={d.bahaya === b.k}
                         className={cn("flex min-h-[58px] w-full items-center gap-3 rounded-[14px] border-2 bg-card px-3.5 py-3 text-left", d.bahaya === b.k ? "border-primary" : "border-border")}>
-                        <StatusBadge status={b.s} label={b.l} />
-                        <small className="text-xs text-text2">{b.d}</small>
+                        <span className={cn("grid h-10 w-10 shrink-0 place-items-center rounded-xl", b.warna)}><b.ikon size={20} /></span>
+                        <span className="min-w-0"><b className="block text-[14.5px] font-extrabold">{b.l}</b><small className="block text-xs text-text2">{b.d}</small></span>
                         <span className={cn("ml-auto h-[22px] w-[22px] shrink-0 rounded-full border-2 border-border-strong", d.bahaya === b.k && "border-[7px] border-primary")} />
                       </button>
                     ))}
@@ -458,7 +475,7 @@ export default function LaporanBaru() {
                   </div>
                   <Label>Periksa sebelum kirim</Label>
                   <div className="rounded-[18px] border border-border bg-card px-3.5">
-                    <Ringkas k="Jenis" v={labelJenis(d.jenis)} s={BAHAYA.find(b => b.k === d.bahaya)?.l} onUbah={() => pindah(1)} />
+                    <Ringkas k="Jenis" v={labelJenis(d.jenis, d.jenisLain)} s={BAHAYA.find(b => b.k === d.bahaya)?.l} onUbah={() => pindah(1)} />
                     <Ringkas k="Lokasi" v={lokasiTeks(d) || "—"} s={d.titik ? `${d.titik.lat.toFixed(5)}, ${d.titik.lng.toFixed(5)}` : "tanpa titik peta"} mono onUbah={() => pindah(2)} />
                     <Ringkas k="Foto" v={d.foto.length ? `${d.foto.length} foto` : "Tanpa foto"} s={`${d.kondisi.length} kondisi dipilih`} onUbah={() => pindah(3)} />
                     <Ringkas k="Warga" v={`${total} orang`} s={KELOMPOK.filter(g => d.korban[g.k]).map(g => `${g.l.split(" ")[0]} ${d.korban[g.k]}`).join(" · ") || "belum diisi"} onUbah={() => pindah(4)} />
@@ -529,7 +546,7 @@ function Terkirim({ id, d, total, user, onBaru }: { id: number; d: Draft; total:
       <div className="mt-4 font-mono text-[22px] font-semibold tracking-[0.02em]">LPR-{String(id).padStart(4, "0")}</div>
       <StatusBadge status="menunggu" className="mt-2.5" />
       <div className="mt-5 w-full rounded-[18px] border border-border bg-card px-3.5 text-left">
-        <Ringkas k="Kejadian" v={labelJenis(d.jenis)} s={lokasiTeks(d)} />
+        <Ringkas k="Kejadian" v={labelJenis(d.jenis, d.jenisLain)} s={lokasiTeks(d)} />
         <Ringkas k="Warga" v={`${total} orang`} s={KELOMPOK.filter(g => d.korban[g.k]).map(g => `${g.l.split(" ")[0]} ${d.korban[g.k]}`).join(" · ") || "belum diisi"} />
       </div>
       <Catatan icon={<Info size={15} />}>Laporan tampil di peta dan daftar publik setelah diverifikasi admin, untuk mencegah titik palsu. Simpan nomor laporan di atas.</Catatan>

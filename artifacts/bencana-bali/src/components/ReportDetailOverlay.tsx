@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { StatusBadge } from "@/components/StatusBadge";
 import { formatRupiah, formatWaktu, formatKoordinat, JENIS_LABELS } from "@/lib/format";
 import { KorbanRincian } from "@/components/KorbanRincian";
+import { FotoBencana } from "@/components/Ilustrasi";
 
 const BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
 
@@ -43,16 +44,11 @@ export function ReportDetailOverlay({ id, onClose }: { id: number; onClose: () =
         <div className="mx-auto grid max-w-[1100px] grid-cols-1 gap-9 px-6 pb-16 pt-7 md:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
           <div className="flex min-w-0 flex-col gap-5">
             <div className="flex flex-col gap-3">
-              <div
-                className="flex aspect-video items-center justify-center rounded-[10px] border border-border"
-                style={{ background: foto[0] ? undefined : "repeating-linear-gradient(135deg, var(--muted) 0 12px, var(--background) 12px 24px)" }}
-              >
+              <div className="aspect-video overflow-hidden rounded-[18px] border border-border">
                 {foto[0] ? (
-                  <img src={foto[0]} alt="" className="h-full w-full rounded-[10px] object-cover" />
+                  <img src={foto[0]} alt={`Foto dokumentasi: ${laporan.judul}`} className="h-full w-full object-cover" />
                 ) : (
-                  <span className="text-center font-mono text-[12.5px] leading-[1.6] text-text3">
-                    FOTO UTAMA LAPORAN<br />{JENIS_LABELS[laporan.jenis_bencana] ?? laporan.jenis_bencana}, {laporan.lokasi}
-                  </span>
+                  <FotoBencana jenis={laporan.jenis_bencana} className="h-full w-full" />
                 )}
               </div>
               {foto.length > 1 && (

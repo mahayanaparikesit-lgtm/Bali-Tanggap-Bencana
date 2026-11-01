@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ReportDetailOverlay } from "@/components/ReportDetailOverlay";
 import { DisasterMap } from "@/components/DisasterMap";
-import { Ilustrasi, adeganDariJenis } from "@/components/Ilustrasi";
+import { FotoBencana, Ilustrasi } from "@/components/Ilustrasi";
 import { Eyebrow, Seismo } from "@/components/brand/Brand";
 import { MobileActionBar, PublicFooter, PublicHeader, UtilityStrip, dashboardHref } from "@/components/public/PublicShell";
 import { formatRupiahRingkas, formatWaktu, JENIS_LABELS } from "@/lib/format";
@@ -43,7 +43,7 @@ function KartuLaporan({ l, onOpen }: { l: any; onOpen: () => void }) {
     <article className="flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition-shadow hover:shadow-[0_18px_40px_-24px_rgba(14,27,46,.45)]">
       <div className="relative aspect-[4/3] overflow-hidden">
         {foto ? <img src={foto} alt={`Foto dokumentasi: ${l.judul}`} className="h-full w-full object-cover" loading="lazy" />
-          : <Ilustrasi adegan={adeganDariJenis(l.jenis_bencana)} className="h-full w-full" />}
+          : <FotoBencana jenis={l.jenis_bencana} className="h-full w-full" />}
         <div className="absolute left-3.5 top-3.5"><StatusBadge status={l.status} /></div>
         <span className="absolute bottom-3 left-3.5 rounded-md bg-ink/60 px-2 py-1 font-mono text-[11px] text-white">
           {JENIS_LABELS[l.jenis_bencana] ?? l.jenis_bencana} · {formatWaktu(l.created_at)}

@@ -1,35 +1,38 @@
-import { useState } from "react";
-import AppLayout from "@/components/AppLayout";
-import { useAuth } from "@/context/AuthContext";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { PhotoUploadField } from "@/components/PhotoUploadField";
-import { Skeleton } from "@/components/ui/skeleton";
-import { StatusBadge, JenisBadge } from "@/components/StatusBadge";
-import { formatRupiah, JENIS_LABELS } from "@/lib/format";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  MapPin, Users, Package, Heart, Building2,
-  Phone, Check, Loader2, Banknote, Box,
-  Images, FileText, AlertCircle,
+  ArrowLeft, ArrowRight, Banknote, Check, CheckCircle2, ChevronRight, Copy, HandHeart, Home, Loader2, MapPin,
+  Minus, Package, Plus, QrCode, Search, Truck, Users, Wallet, EyeOff,
 } from "lucide-react";
+import AppLayout from "@/components/AppLayout";
+import { useAuth } from "@/context/AuthContext";
+import { FotoBencana } from "@/components/Ilustrasi";
+import { KorbanRincian } from "@/components/KorbanRincian";
+import { PhotoUploadField } from "@/components/PhotoUploadField";
+import { StatusBadge } from "@/components/StatusBadge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { formatRupiah, formatRupiahRingkas, JENIS_LABELS } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+// Donasi — redesign 2026. Satu halaman dengan tiga tampilan: daftar lokasi →
+// detail lokasi → alur donasi bertahap (uang atau barang) → sukses. Data dari
+// GET /donatur/bencana-aktif; donasi lewat POST /donasi (satu baris per jenis
+// barang, sama seperti mobile). Nama tampil di publik sesuai pilihan anonim.
+
 const BASE = import.meta.env.VITE_API_URL.replace(/\/$/, "");
+const NOMINAL = [50000, 100000, 250000, 500000, 1000000, 2000000];
+const PESAN_CEPAT = ["Semoga lekas pulih", "Tetap semangat, Bali!", "Doa terbaik dari jauh"];
+const PHONE_REGEX = /^(?:\+62|62|0)8[1-9][0-9]{6,10}$/;
+const REKENING = { bank: "BNI", nomor: "012 345 6789", nama: "BPBD Provinsi Bali" };
 
 async function fetchBencanaAktif() {
   const res = await fetch(`${BASE}/api/donatur/bencana-aktif`, { credentials: "include" });
+  if (!res.ok) throw new Error("Gagal memuat lokasi");
   return res.json();
 }
 
-class SubmitDonasiError extends Error {}
-
-async function submitDonasi(data: Record<string, unknown>) {
+async function kirimDonasi(data: Record<string, unknown>) {
   const res = await fetch(`${BASE}/api/donasi`, {
     method: "POST",
     credentials: "include",
@@ -37,847 +40,530 @@ async function submitDonasi(data: Record<string, unknown>) {
     body: JSON.stringify(data),
   });
   const json = await res.json().catch(() => null);
-  if (!res.ok) {
-    throw new SubmitDonasiError(json?.message ?? "Gagal mengirim donasi. Coba lagi.");
-  }
-  return json;
+  if (!res.ok) throw new Error(json?.message ?? "Gagal mengirim donasi. Coba lagi.");
+  return json as { id: number };
 }
 
-const NOMINAL_OPTIONS = [50000, 100000, 250000, 500000, 1000000];
+const pctDana = (b: any) => (b.target_dana > 0 ? Math.min(100, Math.round(((b.total_dana_terkumpul || 0) / b.target_dana) * 100)) : null);
+const sisa = (k: any) => Math.max(0, (k.jumlah_dibutuhkan || 0) - (k.jumlah_terpenuhi || 0));
+// "Mendesak" diturunkan dari data nyata: dana < 20% target, atau ada kebutuhan < 30% terpenuhi.
+const mendesak = (b: any) => {
+  const p = pctDana(b);
+  return (p != null && p < 20) || (b.kebutuhan ?? []).some((k: any) => k.jumlah_dibutuhkan > 0 && k.jumlah_terpenuhi / k.jumlah_dibutuhkan < 0.3);
+};
 
-// Nomor Indonesia: 0/62/+62 diikuti 8, lalu 8-11 digit lagi.
-const PHONE_REGEX = /^(?:\+62|62|0)8[1-9][0-9]{6,10}$/;
-function isValidPhone(v: string) {
-  return PHONE_REGEX.test(v.replace(/[\s-]/g, ""));
-}
+type Tampilan =
+  | { t: "daftar" }
+  | { t: "detail"; id: number }
+  | { t: "donasi"; id: number; jenis: "dana" | "barang"; kebutuhanAwal?: number }
+  | { t: "sukses"; id: number; jenis: "dana" | "barang"; ids: number[]; ringkas: string };
 
-function FieldError({ message }: { message?: string }) {
-  if (!message) return null;
+export default function DonaturDashboard() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: bencana = [], isLoading } = useQuery<any[]>({ queryKey: ["donatur-bencana-aktif"], queryFn: fetchBencanaAktif });
+  const [tampil, setTampil] = useState<Tampilan>({ t: "daftar" });
+  const pindah = (v: Tampilan) => { setTampil(v); window.scrollTo({ top: 0, behavior: "smooth" }); };
+  const lokasi = "id" in tampil ? bencana.find(b => b.id === tampil.id) : null;
+
   return (
-    <p className="mt-1 flex items-center gap-1 text-xs text-destructive">
-      <AlertCircle className="h-3 w-3 shrink-0" /> {message}
-    </p>
+    <AppLayout
+      title={tampil.t === "daftar" ? "Donasi" : lokasi?.judul ?? "Donasi"}
+      subtitle={tampil.t === "daftar" ? "Pilih lokasi terdampak" : lokasi?.lokasi}
+      backHref={tampil.t === "daftar" ? "/" : undefined}
+      backLabel="Beranda"
+      role="donatur"
+    >
+      {tampil.t === "daftar" && <Daftar bencana={bencana} loading={isLoading} nama={user?.nama ?? ""} onBuka={id => pindah({ t: "detail", id })} onDonasi={id => pindah({ t: "donasi", id, jenis: "dana" })} />}
+      {tampil.t === "detail" && lokasi && <Detail b={lokasi} onKembali={() => pindah({ t: "daftar" })} onDonasi={(jenis, k) => pindah({ t: "donasi", id: lokasi.id, jenis, kebutuhanAwal: k })} />}
+      {tampil.t === "donasi" && lokasi && (
+        <AlurDonasi key={`${lokasi.id}-${tampil.jenis}`} b={lokasi} jenis={tampil.jenis} kebutuhanAwal={tampil.kebutuhanAwal} namaAwal={user?.nama ?? ""}
+          onBatal={() => pindah({ t: "detail", id: lokasi.id })}
+          onSelesai={(ids, ringkas) => { queryClient.invalidateQueries({ queryKey: ["donatur-bencana-aktif"] }); pindah({ t: "sukses", id: lokasi.id, jenis: tampil.jenis, ids, ringkas }); }} />
+      )}
+      {tampil.t === "sukses" && lokasi && <Sukses b={lokasi} jenis={tampil.jenis} ids={tampil.ids} ringkas={tampil.ringkas} onLagi={() => pindah({ t: "daftar" })} />}
+      {"id" in tampil && !lokasi && !isLoading && (
+        <div className="py-20 text-center text-text2">Lokasi tidak ditemukan. <button className="font-bold underline" onClick={() => pindah({ t: "daftar" })}>Kembali</button></div>
+      )}
+    </AppLayout>
   );
 }
 
-// ──── Modal: Detail Bencana ────
-function DetailModal({ bencana, open, onClose }: { bencana: any; open: boolean; onClose: () => void }) {
-  const [tab, setTab] = useState<"info" | "foto" | "kebutuhan" | "posko">("info");
+/* ------------------------------ Daftar lokasi ------------------------------ */
+function Daftar({ bencana, loading, nama, onBuka, onDonasi }: { bencana: any[]; loading: boolean; nama: string; onBuka: (id: number) => void; onDonasi: (id: number) => void }) {
+  const [jenis, setJenis] = useState("semua");
+  const [urut, setUrut] = useState<"mendesak" | "terbaru" | "terdampak">("mendesak");
+  const [cari, setCari] = useState("");
+  const jenisAda = [...new Set(bencana.map(b => b.jenis_bencana))];
+  const total = bencana.reduce((s, b) => s + (b.total_dana_terkumpul || 0), 0);
+  const nMendesak = bencana.filter(mendesak).length;
 
-  if (!bencana) return null;
-
-  const tabs = [
-    { key: "info", label: "Kronologi", icon: FileText },
-    { key: "foto", label: "Foto", icon: Images },
-    { key: "kebutuhan", label: "Kebutuhan", icon: Package },
-    { key: "posko", label: "Posko", icon: Building2 },
-  ] as const;
+  const list = useMemo(() => {
+    const q = cari.trim().toLowerCase();
+    return bencana
+      .filter(b => jenis === "semua" || b.jenis_bencana === jenis)
+      .filter(b => !q || `${b.judul} ${b.lokasi}`.toLowerCase().includes(q))
+      .sort((a, b) => urut === "terbaru" ? +new Date(b.created_at) - +new Date(a.created_at)
+        : urut === "terdampak" ? (b.jumlah_terdampak || 0) - (a.jumlah_terdampak || 0)
+        : Number(mendesak(b)) - Number(mendesak(a)) || (pctDana(a) ?? 100) - (pctDana(b) ?? 100));
+  }, [bencana, jenis, urut, cari]);
 
   return (
-    <Dialog open={open} onOpenChange={v => !v && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto p-0">
-        {/* Header */}
-        <div className="p-5 pb-3 border-b border-border sticky top-0 bg-background z-10">
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <JenisBadge jenis={bencana.jenis_bencana} />
-            <StatusBadge status={bencana.status} />
-          </div>
-          <DialogTitle className="text-base leading-snug">{bencana.judul}</DialogTitle>
-          <div className="flex items-center gap-1.5 text-xs text-text2 mt-1">
-            <MapPin className="h-3 w-3" />{bencana.lokasi}
-          </div>
+    <div className="space-y-7">
+      <section className="grid gap-6 rounded-[28px] bg-ink p-6 text-on-ink sm:p-8 lg:grid-cols-[1.4fr_1fr] dark:border dark:border-ink-line">
+        <div>
+          <span className="font-mono text-[11.5px] uppercase tracking-[0.12em] text-on-ink-2">Halo, {nama.split(" ")[0] || "donatur"}</span>
+          <h1 className="mt-2 text-[clamp(30px,4vw,46px)] font-extrabold leading-[1.02] tracking-[-0.045em] text-white">Bantu lokasi yang <span className="text-marigold">paling membutuhkan.</span></h1>
+          <p className="mt-3 max-w-md text-sm">Pilih lokasi, lihat kebutuhannya per item, lalu donasi uang atau barang. Semua tercatat terbuka di halaman Transparansi.</p>
         </div>
+        <div className="grid grid-cols-3 gap-px self-end overflow-hidden rounded-2xl border border-ink-line bg-ink-line">
+          {[["Lokasi aktif", String(bencana.length), false], ["Mendesak", String(nMendesak), true], ["Dana diterima", formatRupiahRingkas(total), false]].map(([k, v, g]) => (
+            <div key={String(k)} className="bg-ink px-3.5 py-3.5">
+              <b className={cn("block font-mono text-[22px] font-semibold leading-none tracking-[-0.03em] sm:text-[26px]", g ? "text-marigold" : "text-white")}>{loading ? "—" : v}</b>
+              <small className="mt-1.5 block text-xs text-on-ink-2">{k}</small>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        {/* Tab bar */}
-        <div className="flex border-b border-border overflow-x-auto">
-          {tabs.map(t => {
-            const Icon = t.icon;
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex h-11 min-w-[220px] flex-1 items-center gap-2 rounded-full border-[1.5px] border-border-strong bg-card px-4 focus-within:border-primary sm:max-w-xs">
+          <Search size={16} className="text-text2" />
+          <input value={cari} onChange={e => setCari(e.target.value)} placeholder="Cari desa atau kejadian" className="w-full bg-transparent text-sm outline-none" />
+        </label>
+        {["semua", ...jenisAda].map(j => (
+          <button key={j} onClick={() => setJenis(j)} aria-pressed={jenis === j}
+            className={cn("rounded-full border-[1.5px] px-4 py-2 text-[13px] font-bold", jenis === j ? "border-primary bg-primary text-primary-foreground" : "border-border-strong")}>
+            {j === "semua" ? "Semua" : JENIS_LABELS[j] ?? j}
+          </button>
+        ))}
+        <select value={urut} onChange={e => setUrut(e.target.value as typeof urut)} className="ml-auto h-11 rounded-full border-[1.5px] border-border-strong bg-card px-4 text-[13px] font-bold">
+          <option value="mendesak">Paling mendesak</option>
+          <option value="terbaru">Terbaru</option>
+          <option value="terdampak">Terdampak terbanyak</option>
+        </select>
+      </div>
+
+      {loading ? (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[0, 1, 2].map(i => <Skeleton key={i} className="h-[440px] rounded-3xl" />)}</div>
+      ) : list.length === 0 ? (
+        <div className="rounded-3xl border-[1.5px] border-dashed border-border-strong px-5 py-16 text-center text-text2">Tidak ada lokasi yang cocok.</div>
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {list.map(b => {
+            const p = pctDana(b), butuh = (b.kebutuhan ?? []).filter((k: any) => sisa(k) > 0);
             return (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold whitespace-nowrap transition-colors shrink-0",
-                  tab === t.key
-                    ? "border-b-2 border-primary text-primary"
-                    : "text-text2 hover:text-foreground"
-                )}>
-                <Icon className="h-3.5 w-3.5" />{t.label}
-              </button>
+              <article key={b.id} className="group flex flex-col overflow-hidden rounded-3xl border border-border bg-card transition-shadow hover:shadow-[0_18px_40px_-24px_rgba(14,27,46,.45)]">
+                <button onClick={() => onBuka(b.id)} className="relative aspect-[16/10] overflow-hidden text-left" aria-label={`Lihat ${b.judul}`}>
+                  {b.foto_urls?.[0] ? <img src={b.foto_urls[0]} alt="" className="h-full w-full object-cover transition-transform group-hover:scale-[1.03]" /> : <FotoBencana jenis={b.jenis_bencana} className="h-full w-full" />}
+                  {mendesak(b) && <span className="absolute left-3.5 top-3.5 rounded-md bg-urgent px-2 py-1 font-mono text-[10.5px] font-semibold uppercase tracking-[0.1em] text-white">Mendesak</span>}
+                  <span className="absolute bottom-3 left-3.5 rounded-md bg-ink/65 px-2 py-1 font-mono text-[11px] text-white">{JENIS_LABELS[b.jenis_bencana] ?? b.jenis_bencana}</span>
+                </button>
+                <div className="flex flex-1 flex-col p-5">
+                  <span className="flex items-center gap-1.5 text-[12.5px] font-semibold text-text2"><MapPin size={14} /><span className="truncate">{b.lokasi}</span></span>
+                  <h3 className="mt-1.5 line-clamp-2 text-[20px] font-extrabold leading-[1.15] tracking-[-0.035em]">{b.judul}</h3>
+                  <div className="mt-4">
+                    <div className="h-2.5 overflow-hidden rounded-full bg-muted"><i className={cn("block h-full rounded-full", mendesak(b) ? "bg-urgent" : "bg-primary")} style={{ width: `${p ?? 0}%` }} /></div>
+                    <div className="mt-2 flex items-baseline justify-between text-[12.5px] text-text2">
+                      <b className="font-mono text-[17px] font-semibold text-foreground">{formatRupiahRingkas(b.total_dana_terkumpul || 0)}</b>
+                      <span>{p != null ? `${p}% dari ${formatRupiahRingkas(b.target_dana)}` : "target belum ditetapkan"}</span>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex gap-3.5 text-[12.5px] text-text2">
+                    {b.jumlah_terdampak ? <span className="flex items-center gap-1.5"><Users size={14} />{b.jumlah_terdampak.toLocaleString("id-ID")} jiwa</span> : null}
+                    <span className="flex items-center gap-1.5"><Package size={14} />{butuh.length} kebutuhan terbuka</span>
+                  </div>
+                  {butuh.length > 0 && <div className="mt-3 flex flex-wrap gap-1.5">{butuh.slice(0, 3).map((k: any) => <span key={k.id} className="rounded-md bg-muted px-2 py-1 text-[11.5px] font-semibold">{k.nama_item}</span>)}</div>}
+                  <div className="mt-auto flex gap-2 pt-5">
+                    <button onClick={() => onBuka(b.id)} className="flex-1 rounded-full border-[1.5px] border-border-strong py-2.5 text-[13px] font-bold hover:border-foreground">Detail</button>
+                    <button onClick={() => onDonasi(b.id)} className={cn("flex flex-1 items-center justify-center gap-1.5 rounded-full py-2.5 text-[13px] font-bold", mendesak(b) ? "bg-urgent text-white hover:bg-urgent-hover" : "bg-primary text-primary-foreground hover:bg-primary-hover")}>
+                      <HandHeart size={15} />Donasi
+                    </button>
+                  </div>
+                </div>
+              </article>
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
 
-        <div className="p-5 space-y-4">
-          {/* Tab: Kronologi */}
-          {tab === "info" && (
-            <div className="space-y-4">
-              <div>
-                <p className="text-xs font-semibold text-text3 uppercase tracking-wide mb-2">Deskripsi Kejadian</p>
-                <p className="text-sm leading-relaxed">{bencana.deskripsi}</p>
-              </div>
-              {bencana.kronologi ? (
-                <div>
-                  <p className="text-xs font-semibold text-text3 uppercase tracking-wide mb-2">Kronologi</p>
-                  <p className="text-sm leading-relaxed whitespace-pre-line">{bencana.kronologi}</p>
-                </div>
-              ) : (
-                <p className="text-sm text-text2 italic">Kronologi belum tersedia.</p>
-              )}
-              <div className="grid grid-cols-2 gap-3">
-                {bencana.jumlah_terdampak && (
-                  <div className="bg-surface-2 rounded-[10px] p-3">
-                    <Users className="h-4 w-4 text-primary mb-1" />
-                    <p className="font-bold text-lg">{bencana.jumlah_terdampak.toLocaleString("id-ID")}</p>
-                    <p className="text-xs text-text2">Jiwa Terdampak</p>
-                  </div>
-                )}
-                {bencana.lokasi_pengungsian && (
-                  <div className="bg-surface-2 rounded-[10px] p-3">
-                    <MapPin className="h-4 w-4 text-status-ver-fg mb-1" />
-                    <p className="font-semibold text-sm leading-tight">{bencana.lokasi_pengungsian}</p>
-                    <p className="text-xs text-text2">Lokasi Pengungsian</p>
-                  </div>
-                )}
-              </div>
-              {bencana.catatan_admin && (
-                <div className="bg-status-ver-bg border border-status-ver-br rounded-[10px] p-3">
-                  <p className="text-xs font-semibold text-status-ver-fg mb-1">Catatan Tim BPBD</p>
-                  <p className="text-sm text-status-ver-fg">{bencana.catatan_admin}</p>
-                </div>
-              )}
+/* ------------------------------ Detail lokasi ------------------------------ */
+function Detail({ b, onKembali, onDonasi }: { b: any; onKembali: () => void; onDonasi: (jenis: "dana" | "barang", kebutuhanId?: number) => void }) {
+  const p = pctDana(b);
+  const keb: any[] = b.kebutuhan ?? [];
+  return (
+    <div>
+      <button onClick={onKembali} className="mb-5 inline-flex items-center gap-1.5 text-sm font-bold text-text2 hover:text-foreground"><ArrowLeft size={16} />Semua lokasi</button>
+      <div className="grid items-start gap-7 lg:grid-cols-[1.55fr_1fr]">
+        <div className="space-y-6">
+          <div className="relative aspect-[16/9] overflow-hidden rounded-3xl">
+            {b.foto_urls?.[0] ? <img src={b.foto_urls[0]} alt={`Foto dokumentasi ${b.judul}`} className="h-full w-full object-cover" /> : <FotoBencana jenis={b.jenis_bencana} className="h-full w-full" />}
+            {mendesak(b) && <span className="absolute left-4 top-4 rounded-md bg-urgent px-2.5 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.1em] text-white">Mendesak</span>}
+          </div>
+          {b.foto_urls?.length > 1 && (
+            <div className="grid grid-cols-4 gap-2.5">{b.foto_urls.slice(1, 5).map((u: string) => <img key={u} src={u} alt="" className="aspect-[4/3] w-full rounded-xl object-cover" />)}</div>
+          )}
+          <div>
+            <div className="flex flex-wrap items-center gap-2"><StatusBadge status={b.status} /><span className="font-mono text-xs text-text2">{JENIS_LABELS[b.jenis_bencana] ?? b.jenis_bencana}</span></div>
+            <h1 className="mt-3 text-[clamp(28px,3.4vw,40px)] font-extrabold leading-[1.05] tracking-[-0.045em]">{b.judul}</h1>
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-text2"><MapPin size={15} />{b.lokasi}</p>
+            <p className="mt-4 whitespace-pre-line text-[15px] leading-relaxed">{b.kronologi || b.deskripsi}</p>
+          </div>
+          <KorbanRincian laporan={b} />
+
+          <section>
+            <div className="mb-3 flex items-end justify-between gap-3">
+              <h2 className="text-xl font-extrabold tracking-[-0.03em]">Kebutuhan di lokasi</h2>
+              <span className="text-xs text-text2">dicatat relawan · progres bertambah setelah donasi diterima admin</span>
             </div>
+            {keb.length === 0 ? (
+              <div className="rounded-3xl border-[1.5px] border-dashed border-border-strong px-5 py-10 text-center text-sm text-text2">Relawan belum mencatat kebutuhan per item. Donasi uang tetap bisa disalurkan.</div>
+            ) : (
+              <div className="overflow-hidden rounded-3xl border border-border bg-card">
+                {keb.map(k => {
+                  const kp = Math.min(100, Math.round(((k.jumlah_terpenuhi || 0) / Math.max(1, k.jumlah_dibutuhkan)) * 100));
+                  const s = sisa(k);
+                  return (
+                    <div key={k.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border px-5 py-4 last:border-b-0">
+                      <div className="min-w-0 flex-1 basis-60">
+                        <div className="flex items-baseline justify-between gap-3">
+                          <b className="text-[15px]">{k.nama_item}</b>
+                          <span className="font-mono text-xs text-text2"><b className="font-semibold text-foreground">{(k.jumlah_terpenuhi || 0).toLocaleString("id-ID")}</b> / {k.jumlah_dibutuhkan.toLocaleString("id-ID")} {k.satuan}</span>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted"><i className={cn("block h-full rounded-full", kp < 30 ? "bg-urgent" : kp >= 100 ? "bg-status-done-fg" : "bg-primary")} style={{ width: `${kp}%` }} /></div>
+                      </div>
+                      {s > 0 ? (
+                        <button onClick={() => onDonasi("barang", k.id)} className="rounded-full border-[1.5px] border-border-strong px-3.5 py-2 text-[12.5px] font-bold hover:border-foreground">Bantu barang ini</button>
+                      ) : <StatusBadge status="selesai" label="Terpenuhi" />}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <aside className="space-y-4 lg:sticky lg:top-24">
+          <div className="rounded-3xl border border-border bg-card p-5">
+            <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-text2">Dana diterima</span>
+            <b className="mt-1 block font-mono text-[34px] font-semibold leading-none tracking-[-0.04em]">{formatRupiah(b.total_dana_terkumpul || 0)}</b>
+            {p != null && <>
+              <div className="mt-4 h-3 overflow-hidden rounded-full bg-muted"><i className="block h-full rounded-full bg-primary" style={{ width: `${p}%` }} /></div>
+              <p className="mt-2 text-xs text-text2"><b className="text-foreground">{p}%</b> dari target {formatRupiah(b.target_dana)}</p>
+            </>}
+            <div className="mt-5 grid gap-2">
+              <button onClick={() => onDonasi("dana")} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary text-base font-extrabold text-primary-foreground hover:bg-primary-hover"><Banknote size={20} />Donasi uang</button>
+              <button onClick={() => onDonasi("barang")} className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-border-strong text-base font-extrabold hover:border-foreground"><Package size={20} />Donasi barang</button>
+            </div>
+          </div>
+          <div className="space-y-3 rounded-3xl bg-muted p-5 text-sm">
+            {b.koordinator && <p><span className="block font-mono text-[10.5px] uppercase tracking-[0.1em] text-text2">Koordinator lapangan</span><b>{b.koordinator}</b></p>}
+            {b.lokasi_pengungsian && <p><span className="block font-mono text-[10.5px] uppercase tracking-[0.1em] text-text2">Lokasi pengungsian</span><b>{b.lokasi_pengungsian}</b></p>}
+            <p className="text-xs text-text2">Setiap donasi diperiksa admin Pusdalops sebelum dihitung, lalu tampil di halaman <Link href="/transparansi" className="font-bold text-foreground underline">Transparansi</Link>.</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------ Alur donasi ------------------------------ */
+type Item = { kebutuhanId: number | null; nama: string; jumlah: number; satuan: string };
+
+function AlurDonasi({ b, jenis, kebutuhanAwal, namaAwal, onBatal, onSelesai }: {
+  b: any; jenis: "dana" | "barang"; kebutuhanAwal?: number; namaAwal: string;
+  onBatal: () => void; onSelesai: (ids: number[], ringkas: string) => void;
+}) {
+  const keb: any[] = (b.kebutuhan ?? []).filter((k: any) => sisa(k) > 0);
+  const [step, setStep] = useState(1);
+  const [nominal, setNominal] = useState<number | null>(100000);
+  const [nominalLain, setNominalLain] = useState("");
+  const [items, setItems] = useState<Record<number, number>>(() => (kebutuhanAwal ? { [kebutuhanAwal]: 1 } : {}));
+  const [lain, setLain] = useState({ nama: "", jumlah: "" });
+  const [nama, setNama] = useState(namaAwal);
+  const [anonim, setAnonim] = useState(false);
+  const [hp, setHp] = useState("");
+  const [pesan, setPesan] = useState("");
+  const [metode, setMetode] = useState<"transfer" | "qris" | "ewallet">("transfer");
+  const [bukti, setBukti] = useState<string[]>([]);
+  const [serah, setSerah] = useState<"antar" | "jemput">("antar");
+  const [alamatJemput, setAlamatJemput] = useState("");
+  const [kirim, setKirim] = useState(false);
+  const [galat, setGalat] = useState("");
+  const [salin, setSalin] = useState(false);
+
+  useEffect(() => { setGalat(""); }, [step]);
+
+  const jumlahDana = nominalLain ? parseInt(nominalLain.replace(/\D/g, ""), 10) || 0 : nominal ?? 0;
+  const daftarItem: Item[] = [
+    ...Object.entries(items).filter(([, q]) => q > 0).map(([id, q]) => {
+      const k = keb.find(x => x.id === Number(id));
+      return { kebutuhanId: Number(id), nama: k?.nama_item ?? "Barang", jumlah: q, satuan: k?.satuan ?? "" };
+    }),
+    ...(lain.nama.trim() && parseInt(lain.jumlah, 10) > 0 ? [{ kebutuhanId: null, nama: lain.nama.trim(), jumlah: parseInt(lain.jumlah, 10), satuan: "" }] : []),
+  ];
+
+  const LANGKAH = jenis === "dana" ? ["Nominal", "Data Anda", "Pembayaran"] : ["Pilih barang", "Data & penyerahan", "Periksa"];
+  const halangan =
+    step === 1 ? (jenis === "dana" ? (jumlahDana < 10000 ? "Minimal donasi Rp 10.000" : "") : daftarItem.length === 0 ? "Pilih minimal satu barang" : "")
+    : step === 2 ? (nama.trim().length < 2 ? "Isi nama Anda" : !PHONE_REGEX.test(hp.replace(/[\s-]/g, "")) ? "Nomor HP belum valid" : jenis === "barang" && serah === "jemput" && alamatJemput.trim().length < 8 ? "Isi alamat penjemputan" : "")
+    : "";
+
+  const ubahItem = (id: number, d: number) => setItems(prev => {
+    const k = keb.find(x => x.id === id);
+    const n = Math.max(0, Math.min(sisa(k) || 9999, (prev[id] ?? 0) + d));
+    return { ...prev, [id]: n };
+  });
+
+  async function konfirmasi() {
+    setKirim(true); setGalat("");
+    const dasar = { laporan_id: b.id, nama_donatur: nama.trim(), kontak_donatur: hp.trim(), tampilkan_nama: !anonim };
+    try {
+      if (jenis === "dana") {
+        const r = await kirimDonasi({ ...dasar, jenis: "dana", jumlah_dana: jumlahDana, pesan: pesan.trim() || null, bukti_transfer_url: bukti[0] ?? null });
+        onSelesai([r.id], formatRupiah(jumlahDana));
+      } else {
+        const serahTeks = serah === "antar" ? "Diantar sendiri ke posko" : `Minta dijemput: ${alamatJemput.trim()}`;
+        const ids: number[] = [];
+        for (const it of daftarItem) {
+          const r = await kirimDonasi({ ...dasar, jenis: "barang", nama_barang: it.nama, jumlah_barang: it.jumlah, kebutuhan_id: it.kebutuhanId ?? undefined, pesan: [serahTeks, pesan.trim()].filter(Boolean).join(" · ") });
+          ids.push(r.id);
+        }
+        onSelesai(ids, `${daftarItem.length} jenis barang`);
+      }
+    } catch (e) {
+      setGalat((e as Error).message);
+    } finally {
+      setKirim(false);
+    }
+  }
+
+  const lanjut = () => { if (halangan) { setGalat(halangan); return; } step < 3 ? setStep(step + 1) : konfirmasi(); };
+
+  return (
+    <div className="grid items-start gap-7 lg:grid-cols-[1.5fr_1fr]">
+      <div>
+        <button onClick={step === 1 ? onBatal : () => setStep(step - 1)} className="mb-5 inline-flex items-center gap-1.5 text-sm font-bold text-text2 hover:text-foreground">
+          <ArrowLeft size={16} />{step === 1 ? "Kembali ke lokasi" : "Langkah sebelumnya"}
+        </button>
+        <ol className="mb-6 grid grid-cols-3 gap-2">
+          {LANGKAH.map((l, i) => (
+            <li key={l} className="min-w-0">
+              <i className={cn("block h-1.5 rounded-full", i + 1 < step ? "bg-primary" : i + 1 === step ? "bg-marigold" : "bg-border")} />
+              <span className={cn("mt-2 block truncate text-xs font-bold", i + 1 === step ? "text-foreground" : "text-text2")}>{i + 1}. {l}</span>
+            </li>
+          ))}
+        </ol>
+
+        <div className="rounded-3xl border border-border bg-card p-5 sm:p-7">
+          {/* ---------- DANA ---------- */}
+          {jenis === "dana" && step === 1 && (
+            <section>
+              <Judul h="Berapa yang ingin Anda donasikan?" p="Pilih nominal atau tulis sendiri. Seluruh dana dicatat terbuka." />
+              <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                {NOMINAL.map(n => (
+                  <button key={n} onClick={() => { setNominal(n); setNominalLain(""); }} aria-pressed={!nominalLain && nominal === n}
+                    className={cn("rounded-2xl border-2 px-4 py-4 text-left transition", !nominalLain && nominal === n ? "border-primary bg-primary text-primary-foreground" : "border-border hover:border-foreground")}>
+                    <small className="block font-mono text-[11px] opacity-70">Rp</small>
+                    <b className="font-mono text-[22px] font-semibold tracking-[-0.03em]">{n.toLocaleString("id-ID")}</b>
+                  </button>
+                ))}
+              </div>
+              <Label>Nominal lain</Label>
+              <div className="flex h-14 items-center gap-2 rounded-2xl border-[1.5px] border-border-strong px-4 focus-within:border-primary">
+                <span className="font-mono font-semibold text-text2">Rp</span>
+                <input inputMode="numeric" value={nominalLain} placeholder="Tulis nominal"
+                  onChange={e => { const v = e.target.value.replace(/\D/g, ""); setNominalLain(v ? parseInt(v, 10).toLocaleString("id-ID") : ""); }}
+                  className="w-full bg-transparent font-mono text-lg font-semibold outline-none" />
+              </div>
+            </section>
           )}
 
-          {/* Tab: Foto */}
-          {tab === "foto" && (
-            <div>
-              {bencana.foto_urls?.length > 0 ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {bencana.foto_urls.map((url: string, i: number) => (
-                    <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                      <img src={url} alt={`Foto ${i + 1}`}
-                        className="w-full h-40 object-cover rounded-[10px] border border-border hover:opacity-90 transition-opacity" />
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Images className="h-10 w-10 mx-auto mb-2 text-text3 opacity-60" />
-                  <p className="text-sm text-text2">Belum ada foto dokumentasi.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Tab: Kebutuhan */}
-          {tab === "kebutuhan" && (
-            <div>
-              {bencana.kebutuhan?.length > 0 ? (
-                <div className="space-y-2.5">
-                  {bencana.kebutuhan.map((k: any) => {
-                    const pct = Math.min(100, Math.round((k.jumlah_terpenuhi / k.jumlah_dibutuhkan) * 100));
-                    const sisa = Math.max(0, k.jumlah_dibutuhkan - k.jumlah_terpenuhi);
+          {/* ---------- BARANG ---------- */}
+          {jenis === "barang" && step === 1 && (
+            <section>
+              <Judul h="Barang apa yang ingin Anda kirim?" p="Pilih dari kebutuhan yang dicatat relawan — paling tepat sasaran." />
+              {keb.length > 0 ? (
+                <div className="mt-5 space-y-2.5">
+                  {keb.map(k => {
+                    const q = items[k.id] ?? 0;
                     return (
-                      <div key={k.id} className="border border-border rounded-[10px] p-3">
-                        <div className="flex items-start justify-between mb-1.5">
-                          <div>
-                            <p className="font-semibold text-sm">{k.nama_item}</p>
-                            <p className="text-xs text-text2">{k.kategori}</p>
-                          </div>
-                          <span className={cn(
-                            "text-xs font-semibold px-2 py-0.5 rounded-full border shrink-0 ml-2",
-                            sisa === 0
-                              ? "bg-status-done-bg text-status-done-fg border-status-done-br"
-                              : "bg-status-wait-bg text-status-wait-fg border-status-wait-br"
-                          )}>
-                            {sisa === 0 ? "Terpenuhi" : `Sisa ${sisa} ${k.satuan}`}
-                          </span>
+                      <div key={k.id} className={cn("flex items-center gap-3 rounded-2xl border-2 px-4 py-3", q > 0 ? "border-primary" : "border-border")}>
+                        <span className="min-w-0 flex-1"><b className="block text-[15px]">{k.nama_item}</b><small className="text-xs text-text2">masih dibutuhkan {sisa(k).toLocaleString("id-ID")} {k.satuan}</small></span>
+                        <div className="flex items-center gap-1">
+                          <button aria-label={`Kurangi ${k.nama_item}`} disabled={!q} onClick={() => ubahItem(k.id, -1)} className="grid h-11 w-11 place-items-center rounded-xl border-[1.5px] border-border-strong disabled:opacity-35"><Minus size={18} /></button>
+                          <input inputMode="numeric" aria-label={`Jumlah ${k.nama_item}`} value={q} onFocus={e => e.target.select()}
+                            onChange={e => { const v = parseInt(e.target.value.replace(/\D/g, ""), 10) || 0; setItems(p => ({ ...p, [k.id]: Math.min(sisa(k), v) })); }}
+                            className="h-11 w-14 rounded-lg bg-transparent text-center font-mono text-lg font-semibold outline-none focus:bg-muted" />
+                          <button aria-label={`Tambah ${k.nama_item}`} onClick={() => ubahItem(k.id, 1)} className="grid h-11 w-11 place-items-center rounded-xl bg-primary text-primary-foreground"><Plus size={18} /></button>
                         </div>
-                        <Progress value={pct} className={cn("h-2 mb-1", sisa === 0 ? "[&>div]:bg-status-done-fg" : "")} />
-                        <div className="flex justify-between text-xs text-text2">
-                          <span>{k.jumlah_terpenuhi} / {k.jumlah_dibutuhkan} {k.satuan}</span>
-                          <span>{pct}%</span>
-                        </div>
-                        {k.keterangan && <p className="text-xs text-text3 mt-1 italic">{k.keterangan}</p>}
                       </div>
                     );
                   })}
                 </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Package className="h-10 w-10 mx-auto mb-2 text-text3 opacity-60" />
-                  <p className="text-sm text-text2">Belum ada daftar kebutuhan.</p>
-                </div>
-              )}
-            </div>
+              ) : <p className="mt-5 rounded-2xl bg-muted px-4 py-3 text-sm text-text2">Belum ada kebutuhan per item. Tulis barang yang ingin Anda kirim di bawah.</p>}
+              <Label hint="opsional">Barang lain</Label>
+              <div className="grid grid-cols-[1fr_110px] gap-2">
+                <input value={lain.nama} onChange={e => setLain(v => ({ ...v, nama: e.target.value }))} maxLength={80} placeholder="Nama barang" className="h-12 rounded-2xl border-[1.5px] border-border-strong bg-card px-4 text-sm font-semibold outline-none focus:border-primary" />
+                <input value={lain.jumlah} inputMode="numeric" onChange={e => setLain(v => ({ ...v, jumlah: e.target.value.replace(/\D/g, "") }))} placeholder="Jumlah" className="h-12 rounded-2xl border-[1.5px] border-border-strong bg-card px-4 font-mono text-sm font-semibold outline-none focus:border-primary" />
+              </div>
+            </section>
           )}
 
-          {/* Tab: Posko */}
-          {tab === "posko" && (
-            <div className="space-y-3">
-              {!bencana.posko?.length && (
-                <p className="text-sm text-text2">Belum ada data posko untuk lokasi ini.</p>
-              )}
-              {bencana.posko?.map((p: any, i: number) => (
-                <div key={i} className="border border-border rounded-[10px] p-4">
-                  <p className="font-semibold text-sm mb-1">{p.nama}</p>
-                  <div className="flex items-start gap-1.5 text-xs text-text2 mb-1">
-                    <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                    <span>{p.alamat}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-text2">
-                    <Phone className="h-3.5 w-3.5 shrink-0" />
-                    <a href={`tel:${p.kontak}`} className="hover:text-primary">{p.kontak}</a>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-type DonasiForm = {
-  namaDonatur: string;
-  anonim: boolean;
-  kontakDonatur: string;
-  nominalPilihan: number | null;
-  nominalCustom: string;
-  metodeBayar: string;
-  pesan: string;
-  buktiUrls: string[];
-  selectedKebutuhan: any | null;
-  namaBarang: string;
-  jumlahBarang: string;
-  kondisiBarang: string;
-};
-
-function emptyForm(namaDonatur: string): DonasiForm {
-  return {
-    namaDonatur,
-    anonim: false,
-    kontakDonatur: "",
-    nominalPilihan: null,
-    nominalCustom: "",
-    metodeBayar: "transfer",
-    pesan: "",
-    buktiUrls: [],
-    selectedKebutuhan: null,
-    namaBarang: "",
-    jumlahBarang: "",
-    kondisiBarang: "",
-  };
-}
-
-// ──── Modal: Donasi ────
-function DonasiModal({ bencana, open, onClose, onSuccess }: {
-  bencana: any; open: boolean; onClose: () => void; onSuccess: () => void;
-}) {
-  const { user } = useAuth();
-  const [step, setStep] = useState<"jenis" | "form" | "konfirmasi" | "sukses">("jenis");
-  const [donasiJenis, setDonasiJenis] = useState<"dana" | "barang" | null>(null);
-  const [form, setForm] = useState<DonasiForm>(() => emptyForm(user?.nama ?? ""));
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-  const [hasilDonasi, setHasilDonasi] = useState<any | null>(null);
-
-  const set = <K extends keyof DonasiForm>(key: K, value: DonasiForm[K]) =>
-    setForm(f => ({ ...f, [key]: value }));
-
-  function reset() {
-    setStep("jenis");
-    setDonasiJenis(null);
-    setForm(emptyForm(user?.nama ?? ""));
-    setErrors({});
-    setSubmitError("");
-    setHasilDonasi(null);
-  }
-
-  const nominalFinal = form.nominalPilihan || parseInt(form.nominalCustom.replace(/\D/g, "") || "0");
-
-  function validateBiodata(errs: Record<string, string>) {
-    if (!form.namaDonatur.trim() || form.namaDonatur.trim().length < 2) {
-      errs.namaDonatur = "Nama lengkap wajib diisi.";
-    }
-    if (!form.kontakDonatur.trim()) {
-      errs.kontakDonatur = "Nomor HP/WhatsApp wajib diisi.";
-    } else if (!isValidPhone(form.kontakDonatur)) {
-      errs.kontakDonatur = "Format nomor tidak valid, contoh: 081234567890.";
-    }
-  }
-
-  function handleLanjutDana() {
-    const errs: Record<string, string> = {};
-    validateBiodata(errs);
-    if (!nominalFinal || nominalFinal < 10000) {
-      errs.nominal = "Pilih atau isi nominal minimal Rp 10.000.";
-    }
-    setErrors(errs);
-    if (Object.keys(errs).length === 0) setStep("konfirmasi");
-  }
-
-  function handleLanjutBarang() {
-    const errs: Record<string, string> = {};
-    validateBiodata(errs);
-    if (!form.namaBarang.trim()) errs.namaBarang = "Nama barang wajib diisi.";
-    const jumlah = parseInt(form.jumlahBarang || "0");
-    if (!form.jumlahBarang || isNaN(jumlah) || jumlah < 1) {
-      errs.jumlahBarang = "Jumlah barang wajib diisi, minimal 1.";
-    }
-    if (!form.kondisiBarang.trim() || form.kondisiBarang.trim().length < 5) {
-      errs.kondisiBarang = "Jelaskan kondisi barang minimal 5 karakter.";
-    }
-    setErrors(errs);
-    if (Object.keys(errs).length === 0) setStep("konfirmasi");
-  }
-
-  async function handleSubmit() {
-    setSubmitting(true);
-    setSubmitError("");
-    try {
-      const payload: Record<string, unknown> = {
-        laporan_id: bencana?.id,
-        jenis: donasiJenis,
-        nama_donatur: form.namaDonatur.trim(),
-        // Nama asli tetap disimpan untuk admin; publik hanya melihatnya bila tidak anonim.
-        tampilkan_nama: !form.anonim,
-        kontak_donatur: form.kontakDonatur.trim(),
-      };
-      if (donasiJenis === "dana") {
-        payload.jumlah_dana = nominalFinal;
-        payload.pesan = form.pesan || null;
-        payload.bukti_transfer_url = form.buktiUrls[0] ?? null;
-      } else {
-        payload.nama_barang = form.namaBarang.trim();
-        payload.jumlah_barang = parseInt(form.jumlahBarang || "1");
-        payload.pesan = form.kondisiBarang.trim();
-        if (form.selectedKebutuhan) payload.kebutuhan_id = form.selectedKebutuhan.id;
-      }
-      const hasil = await submitDonasi(payload);
-      setHasilDonasi(hasil);
-      onSuccess();
-      setStep("sukses");
-    } catch (e) {
-      setSubmitError(e instanceof SubmitDonasiError ? e.message : "Gagal mengirim donasi. Periksa koneksi Anda.");
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={v => { if (!v) { onClose(); reset(); } }}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-base leading-tight pr-6">Donasi — {bencana?.judul}</DialogTitle>
-        </DialogHeader>
-
-        {/* Pilih jenis */}
-        {step === "jenis" && (
-          <div className="space-y-4">
-            <p className="text-sm text-text2">Pilih jenis donasi:</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => { setDonasiJenis("dana"); setStep("form"); }}
-                className="flex flex-col items-center gap-3 rounded-[10px] border border-border p-5 hover:border-primary hover:bg-primary-soft transition-all text-center">
-                <div className="w-12 h-12 rounded-full bg-primary-soft flex items-center justify-center">
-                  <Banknote className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Donasi Dana</p>
-                  <p className="text-xs text-text2 mt-0.5">Transfer ke rekening resmi</p>
-                </div>
+          {/* ---------- DATA ANDA ---------- */}
+          {step === 2 && (
+            <section>
+              <Judul h="Data Anda" p="Untuk konfirmasi donasi. Nomor HP tidak pernah tampil di publik." />
+              <Label>Nama</Label>
+              <input value={nama} onChange={e => setNama(e.target.value)} maxLength={100} className="h-12 w-full rounded-2xl border-[1.5px] border-border-strong bg-card px-4 text-sm font-semibold outline-none focus:border-primary" />
+              <button onClick={() => setAnonim(v => !v)} aria-pressed={anonim} className={cn("mt-3 flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3.5 text-left", anonim ? "border-primary" : "border-border")}>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-muted"><EyeOff size={18} /></span>
+                <span className="min-w-0 flex-1"><b className="block text-sm">Donasi sebagai anonim</b><small className="text-xs text-text2">Di halaman Transparansi tampil "Anonim". Nama Anda hanya dilihat admin.</small></span>
+                <span className={cn("relative h-7 w-12 shrink-0 rounded-full transition", anonim ? "bg-primary" : "bg-border-strong")}><i className={cn("absolute top-1 h-5 w-5 rounded-full bg-white transition-all", anonim ? "left-6" : "left-1")} /></span>
               </button>
-              <button onClick={() => { setDonasiJenis("barang"); setStep("form"); }}
-                className="flex flex-col items-center gap-3 rounded-[10px] border border-border p-5 hover:border-accent hover:bg-surface-2 transition-all text-center">
-                <div className="w-12 h-12 rounded-full bg-surface-2 flex items-center justify-center">
-                  <Box className="h-6 w-6 text-accent-ink" />
-                </div>
-                <div>
-                  <p className="font-semibold text-sm">Donasi Barang</p>
-                  <p className="text-xs text-text2 mt-0.5">Antarkan ke posko terdekat</p>
-                </div>
-              </button>
-            </div>
-          </div>
-        )}
+              <Label>Nomor HP / WhatsApp</Label>
+              <input value={hp} inputMode="tel" onChange={e => setHp(e.target.value.replace(/[^\d+ ]/g, ""))} placeholder="0812 3456 7890" maxLength={18} className="h-12 w-full rounded-2xl border-[1.5px] border-border-strong bg-card px-4 font-mono text-base font-semibold outline-none focus:border-primary" />
 
-        {/* Form Dana */}
-        {step === "form" && donasiJenis === "dana" && (
-          <div className="space-y-4">
-            <div>
-              <Label className="text-xs">Pilih nominal</Label>
-              <div className="grid grid-cols-3 gap-2 mt-1">
-                {NOMINAL_OPTIONS.map(n => (
-                  <button key={n} onClick={() => { set("nominalPilihan", n); set("nominalCustom", ""); }}
-                    className={cn("rounded-[8px] border py-2 px-1.5 text-xs font-semibold transition-all",
-                      form.nominalPilihan === n ? "border-primary bg-primary-soft text-primary" : "border-border hover:border-text2/40")}>
-                    {formatRupiah(n)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs">Atau nominal lain</Label>
-              <Input placeholder="Rp 0" value={form.nominalCustom}
-                onChange={e => { set("nominalCustom", e.target.value); set("nominalPilihan", null); }} className="mt-1" />
-              <FieldError message={errors.nominal} />
-            </div>
-            <div>
-              <Label className="text-xs">Metode Pembayaran</Label>
-              <div className="grid grid-cols-3 gap-2 mt-1">
-                {[{ v: "transfer", l: "Transfer Bank" }, { v: "qris", l: "QRIS" }, { v: "ewallet", l: "e-Wallet" }].map(m => (
-                  <button key={m.v} onClick={() => set("metodeBayar", m.v)}
-                    className={cn("rounded-[8px] border py-2 px-1.5 text-xs font-semibold transition-all",
-                      form.metodeBayar === m.v ? "border-primary bg-primary-soft text-primary" : "border-border")}>
-                    {m.l}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="nama_donatur">Nama Donatur *</Label>
-              <Input id="nama_donatur" placeholder="Nama lengkap Anda" value={form.namaDonatur}
-                onChange={e => set("namaDonatur", e.target.value)}
-                className={cn("mt-1", errors.namaDonatur && "border-destructive")} />
-              <FieldError message={errors.namaDonatur} />
-              <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-sm">
-                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" checked={form.anonim} onChange={e => set("anonim", e.target.checked)} />
-                <span>Donasi sebagai anonim<span className="block text-xs text-text2">Nama Anda hanya dilihat admin; di halaman transparansi tampil "Anonim".</span></span>
-              </label>
-            </div>
-            <div>
-              <Label htmlFor="kontak_donatur">No. HP / WhatsApp *</Label>
-              <Input id="kontak_donatur" placeholder="081234567890" value={form.kontakDonatur}
-                onChange={e => set("kontakDonatur", e.target.value)}
-                className={cn("mt-1", errors.kontakDonatur && "border-destructive")} />
-              <FieldError message={errors.kontakDonatur} />
-            </div>
-            <div>
-              <Label className="text-xs">Pesan (opsional)</Label>
-              <Textarea placeholder="Semangat..." value={form.pesan} onChange={e => set("pesan", e.target.value)} rows={2} className="mt-1" />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep("jenis")} className="flex-1">Kembali</Button>
-              <Button onClick={handleLanjutDana} className="flex-1">Lanjut</Button>
-            </div>
-          </div>
-        )}
-
-        {step === "konfirmasi" && donasiJenis === "dana" && (
-          <div className="space-y-4">
-            <div className="rounded-[10px] bg-surface-2 p-4 space-y-3">
-              <p className="font-semibold text-sm">Ringkasan Donasi Dana</p>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-text2">Jumlah</span>
-                  <span className="font-bold text-lg text-primary">{formatRupiah(nominalFinal)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text2">Metode</span>
-                  <span className="font-medium capitalize">{form.metodeBayar.replace("_", " ")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text2">Nama</span>
-                  <span className="font-medium">{form.namaDonatur}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text2">Kontak</span>
-                  <span className="font-medium">{form.kontakDonatur}</span>
-                </div>
-              </div>
-              <div className="border-t border-border pt-3">
-                <p className="text-xs font-semibold text-text3 mb-2">Rekening Tujuan</p>
-                <div className="bg-card rounded-[8px] border border-border p-3 space-y-1">
-                  <p className="font-bold">BNI — 012 345 6789</p>
-                  <p className="text-sm">a.n. BPBD Provinsi Bali</p>
-                  <p className="text-xs text-text2">Kode unik: BTB-{bencana?.id?.toString().padStart(4, "0")}</p>
-                </div>
-              </div>
-            </div>
-
-            <PhotoUploadField
-              label="Bukti Transfer (opsional)"
-              urls={form.buktiUrls}
-              onChange={urls => set("buktiUrls", urls)}
-              maxFiles={1}
-              hint="Sudah transfer? Unggah bukti sekarang agar verifikasi lebih cepat. Bisa juga menyusul kemudian."
-            />
-
-            {submitError && (
-              <div className="flex items-start gap-2 rounded-[8px] border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {submitError}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep("form")} className="flex-1">Kembali</Button>
-              <Button onClick={handleSubmit} disabled={submitting} className="flex-1">
-                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Konfirmasi Donasi
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Form Barang */}
-        {step === "form" && donasiJenis === "barang" && (
-          <div className="space-y-4">
-            <div className="rounded-[10px] bg-surface-2 border border-border p-4">
-              <p className="text-sm font-semibold text-accent-ink mb-2 flex items-center gap-2">
-                <Building2 className="h-4 w-4" /> Antarkan ke Posko Terdekat
-              </p>
-              <div className="space-y-2">
-                {!bencana?.posko?.length && (
-                  <p className="text-xs text-text2">Belum ada data posko untuk lokasi ini.</p>
-                )}
-                {bencana?.posko?.slice(0, 2).map((p: any, i: number) => (
-                  <div key={i} className="bg-card rounded-[8px] p-3 border border-border">
-                    <p className="font-semibold text-xs">{p.nama}</p>
-                    <p className="text-xs text-text2">{p.alamat}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Phone className="h-3 w-3 text-text2" />
-                      <p className="text-xs text-text2">{p.kontak}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {bencana?.kebutuhan?.filter((k: any) => k.jumlah_terpenuhi < k.jumlah_dibutuhkan).length > 0 && (
-              <div>
-                <Label className="text-xs font-semibold">Pilih dari Daftar Kebutuhan</Label>
-                <p className="text-xs text-text2 mb-1.5">Klik untuk memilih, atau isi manual</p>
-                <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                  {bencana.kebutuhan.filter((k: any) => k.jumlah_terpenuhi < k.jumlah_dibutuhkan).map((k: any) => {
-                    const sisa = k.jumlah_dibutuhkan - k.jumlah_terpenuhi;
-                    const pct = Math.round((k.jumlah_terpenuhi / k.jumlah_dibutuhkan) * 100);
-                    const isSelected = form.selectedKebutuhan?.id === k.id;
-                    return (
-                      <button key={k.id}
-                        onClick={() => { set("selectedKebutuhan", k); set("namaBarang", k.nama_item); }}
-                        className={cn("w-full text-left rounded-[8px] border px-3 py-2 transition-all",
-                          isSelected ? "border-primary bg-primary-soft" : "border-border hover:border-primary/40")}>
-                        <div className="flex items-center justify-between mb-0.5">
-                          <span className="text-xs font-medium">{k.nama_item}</span>
-                          <span className="text-xs text-text2">Sisa {sisa} {k.satuan}</span>
-                        </div>
-                        <Progress value={pct} className="h-1.5" />
+              {jenis === "barang" && (
+                <>
+                  <Label>Cara penyerahan</Label>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    {([["antar", "Antar sendiri", "Ke posko / lokasi pengungsian", Home], ["jemput", "Dijemput relawan", "Relawan menghubungi Anda", Truck]] as const).map(([k, l, d, Ikon]) => (
+                      <button key={k} onClick={() => setSerah(k)} aria-pressed={serah === k} className={cn("flex items-center gap-3 rounded-2xl border-2 px-4 py-3.5 text-left", serah === k ? "border-primary" : "border-border")}>
+                        <Ikon size={20} /><span><b className="block text-sm">{l}</b><small className="text-xs text-text2">{d}</small></span>
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <Label htmlFor="nama_barang">Nama Barang *</Label>
-              <Input id="nama_barang" placeholder="cth: Beras, Selimut..." value={form.namaBarang}
-                onChange={e => { set("namaBarang", e.target.value); set("selectedKebutuhan", null); }}
-                className={cn("mt-1", errors.namaBarang && "border-destructive")} />
-              <FieldError message={errors.namaBarang} />
-            </div>
-            <div>
-              <Label htmlFor="jumlah_barang">Jumlah *</Label>
-              <Input id="jumlah_barang" type="number" min={1} placeholder="10" value={form.jumlahBarang}
-                onChange={e => set("jumlahBarang", e.target.value)}
-                className={cn("mt-1", errors.jumlahBarang && "border-destructive")} />
-              <FieldError message={errors.jumlahBarang} />
-            </div>
-            <div>
-              <Label htmlFor="kondisi_barang">Kondisi Barang / Catatan *</Label>
-              <Textarea id="kondisi_barang" placeholder="cth: Baju layak pakai, ukuran campur dewasa & anak"
-                value={form.kondisiBarang} onChange={e => set("kondisiBarang", e.target.value)} rows={2}
-                className={cn("mt-1", errors.kondisiBarang && "border-destructive")} />
-              <FieldError message={errors.kondisiBarang} />
-            </div>
-            <div>
-              <Label htmlFor="nama_donatur_barang">Nama Donatur *</Label>
-              <Input id="nama_donatur_barang" placeholder="Nama lengkap Anda" value={form.namaDonatur}
-                onChange={e => set("namaDonatur", e.target.value)}
-                className={cn("mt-1", errors.namaDonatur && "border-destructive")} />
-              <FieldError message={errors.namaDonatur} />
-              <label className="mt-2.5 flex cursor-pointer items-start gap-2.5 text-sm">
-                <input type="checkbox" className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" checked={form.anonim} onChange={e => set("anonim", e.target.checked)} />
-                <span>Donasi sebagai anonim<span className="block text-xs text-text2">Nama Anda hanya dilihat admin; di halaman transparansi tampil "Anonim".</span></span>
-              </label>
-            </div>
-            <div>
-              <Label htmlFor="kontak_donatur_barang">No. HP / WhatsApp *</Label>
-              <Input id="kontak_donatur_barang" placeholder="081234567890" value={form.kontakDonatur}
-                onChange={e => set("kontakDonatur", e.target.value)}
-                className={cn("mt-1", errors.kontakDonatur && "border-destructive")} />
-              <FieldError message={errors.kontakDonatur} />
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep("jenis")} className="flex-1">Kembali</Button>
-              <Button onClick={handleLanjutBarang} className="flex-1">Lanjut</Button>
-            </div>
-          </div>
-        )}
-
-        {step === "konfirmasi" && donasiJenis === "barang" && (
-          <div className="space-y-4">
-            <div className="rounded-[10px] bg-surface-2 p-4 space-y-1.5 text-sm">
-              <p className="font-semibold text-sm mb-1.5">Ringkasan Donasi Barang</p>
-              <div className="flex justify-between"><span className="text-text2">Barang</span><span className="font-medium">{form.namaBarang}</span></div>
-              <div className="flex justify-between"><span className="text-text2">Jumlah</span><span className="font-medium">{form.jumlahBarang}</span></div>
-              <div className="flex justify-between"><span className="text-text2">Nama</span><span className="font-medium">{form.namaDonatur}</span></div>
-              <div className="flex justify-between"><span className="text-text2">Kontak</span><span className="font-medium">{form.kontakDonatur}</span></div>
-              <div className="pt-1.5 border-t border-border">
-                <span className="text-text2">Kondisi/catatan</span>
-                <p className="mt-0.5">{form.kondisiBarang}</p>
-              </div>
-            </div>
-            <p className="text-xs text-text2">Setelah dikonfirmasi, antarkan barang ke salah satu posko yang tertera sebelumnya.</p>
-
-            {submitError && (
-              <div className="flex items-start gap-2 rounded-[8px] border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" /> {submitError}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setStep("form")} className="flex-1">Kembali</Button>
-              <Button onClick={handleSubmit} disabled={submitting} className="flex-1">
-                {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Daftarkan Donasi
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {/* Sukses */}
-        {step === "sukses" && (
-          <div className="text-center py-4 space-y-4">
-            <div className="w-14 h-14 rounded-full bg-status-done-bg flex items-center justify-center mx-auto">
-              <svg width={26} height={26} viewBox="0 0 12 12" aria-hidden="true">
-                <circle cx={6} cy={6} r={5.2} className="fill-status-done-fg" />
-                <polyline points="3.6,6.2 5.2,7.9 8.4,4.3" fill="none" stroke="hsl(var(--card))" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div>
-              <h3 className="text-lg font-extrabold tracking-tight">
-                {donasiJenis === "dana" ? "Donasi Dana Terdaftar" : "Donasi Barang Terdaftar"}
-              </h3>
-              <p className="text-text2 text-sm mt-1">
-                {donasiJenis === "dana"
-                  ? "Silakan transfer ke rekening BPBD Bali sesuai ringkasan sebelumnya. Terima kasih!"
-                  : `Antarkan ${form.namaBarang} ke posko terdekat. Terima kasih!`}
-              </p>
-            </div>
-            <Card className="rounded-[10px] border-border bg-surface text-left shadow-none">
-              <CardContent className="space-y-2.5 p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-text3">No. donasi</span>
-                  <span className="font-mono text-sm font-semibold">
-                    {hasilDonasi?.id ? `DNS-${hasilDonasi.id}` : "—"}
-                  </span>
-                </div>
-                <StatusBadge status="menunggu" />
-              </CardContent>
-            </Card>
-            <Button onClick={() => { onClose(); reset(); }} className="w-full">Selesai</Button>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ──── Kartu Lokasi — sesuai Pilih Tempat Donasi.dc.html ────
-// "Mendesak"/"Prioritas" bukan kategori tersimpan di backend — diturunkan dari
-// data real (dana masih di bawah 20% atau jiwa terdampak terbanyak), bukan label bebas.
-function BencanaCard({ bencana, isPalingTerdampak, onDonasi, onDetail }: {
-  bencana: any;
-  isPalingTerdampak: boolean;
-  onDonasi: () => void;
-  onDetail: () => void;
-}) {
-  const terkumpul = bencana.total_dana_terkumpul || 0;
-  const target = bencana.target_dana || 0;
-  const danaPct = target > 0 ? Math.min(100, Math.round((terkumpul / target) * 100)) : null;
-  const foto = bencana.foto_urls?.[0];
-  const jumlahKebutuhan = bencana.kebutuhan?.length ?? 0;
-
-  const mendesak = danaPct !== null && danaPct < 20;
-  const pill = mendesak
-    ? { label: "Mendesak", cls: "bg-primary text-primary-foreground" }
-    : isPalingTerdampak
-    ? { label: "Prioritas", cls: "bg-accent text-accent-ink" }
-    : null;
-
-  return (
-    <Card className="flex flex-col overflow-hidden rounded-[6px] border-0 shadow-[0_1px_3px_rgba(15,23,42,0.07),0_8px_24px_rgba(15,23,42,0.06)]">
-      {/* Aksen urgensi di atas foto — sinyal cepat tanpa harus baca pill/teks. */}
-      <div className={cn("h-[3px] shrink-0", mendesak ? "bg-primary" : isPalingTerdampak ? "bg-accent" : "bg-transparent")} />
-      <div className="relative aspect-[4/3] border-b border-border" style={!foto ? { background: "repeating-linear-gradient(135deg, var(--muted) 0 10px, var(--background) 10px 20px)" } : undefined}>
-        {foto ? (
-          <img src={foto} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center px-6 text-center">
-            <span className="font-mono text-xs leading-[1.5] tracking-[0.04em] text-text3">
-              FOTO LOKASI<br />{JENIS_LABELS[bencana.jenis_bencana] ?? bencana.jenis_bencana} — {bencana.lokasi}
-            </span>
-          </div>
-        )}
-        {pill && (
-          <span className={cn("absolute left-[18px] top-[18px] rounded-full px-3.5 py-[7px] text-[11px] font-extrabold uppercase tracking-[0.09em] shadow-sm", pill.cls)}>
-            {pill.label}
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-3.5 px-[26px] pb-[22px] pt-[26px]">
-        <div className="flex items-start justify-between gap-3">
-          <span className="flex min-w-0 items-center gap-2 text-sm text-text2">
-            <MapPin size={13} className="shrink-0 text-primary" />
-            <span className="truncate">{bencana.lokasi}</span>
-          </span>
-          {bencana.koordinator && (
-            <span className="flex shrink-0 items-center gap-1.5 text-xs text-text3">
-              <Users className="h-3 w-3" /> {bencana.koordinator}
-            </span>
-          )}
-        </div>
-        <h2 className="font-serif text-2xl font-bold leading-[1.2]">{bencana.judul}</h2>
-        <div className="flex flex-wrap items-center gap-x-3.5 gap-y-2 text-[13px] text-text2">
-          {bencana.jumlah_terdampak ? <span>{bencana.jumlah_terdampak.toLocaleString("id-ID")} Pengungsi</span> : null}
-          <span>{jumlahKebutuhan} Kebutuhan</span>
-        </div>
-
-        <div className="mt-1.5 space-y-2 border-t border-border pt-5">
-          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-            <b className="whitespace-nowrap text-[22px] font-extrabold tracking-[-0.02em] text-primary">{formatRupiah(terkumpul)}</b>
-            <button onClick={onDetail} className="whitespace-nowrap text-[14.5px] font-bold text-primary hover:underline">Lihat Detail</button>
-          </div>
-          {target > 0 && (
-            <div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-2">
-                <div
-                  className={cn("h-full rounded-full", mendesak ? "bg-primary" : "bg-accent")}
-                  style={{ width: `${danaPct}%` }}
-                />
-              </div>
-              <div className="mt-1 flex items-center justify-between text-[11.5px] text-text3">
-                <span>{danaPct}% dari target</span>
-                <span>Target {formatRupiah(target)}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <Button onClick={onDonasi} size="sm" className="mt-1 gap-1.5">
-          <Heart className="h-3.5 w-3.5" /> Donasikan Bantuan
-        </Button>
-      </div>
-    </Card>
-  );
-}
-
-// ──── Main Page ────
-export default function DonaturDashboard() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { data: bencana = [], isLoading } = useQuery({
-    queryKey: ["donatur-bencana-aktif"],
-    queryFn: fetchBencanaAktif,
-  });
-
-  const [donasiTarget, setDonasiTarget] = useState<any | null>(null);
-  const [detailTarget, setDetailTarget] = useState<any | null>(null);
-
-  function handleDonasiSuccess() {
-    queryClient.invalidateQueries({ queryKey: ["donatur-bencana-aktif"] });
-  }
-
-  const terdampakTertinggi = bencana.length > 0
-    ? Math.max(...bencana.map((b: any) => b.jumlah_terdampak || 0))
-    : 0;
-
-  // Ringkasan cepat di header — dihitung dari data yang sama dipakai kartu
-  // (bukan kategori tersimpan terpisah), sekadar menonjolkan skala kebutuhan
-  // saat ini tanpa mengulang pola "grid kartu statistik generik".
-  const mendesakCount = bencana.filter((b: any) => {
-    const target = b.target_dana || 0;
-    if (target <= 0) return false;
-    const pct = Math.min(100, Math.round(((b.total_dana_terkumpul || 0) / target) * 100));
-    return pct < 20;
-  }).length;
-
-  return (
-    <AppLayout title="Pilih Tempat Donasi" subtitle="Bali Tanggap Bencana" role="donatur" showLogout>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&display=swap" />
-      <div className="space-y-8">
-        <div className="flex flex-wrap items-end justify-between gap-x-10 gap-y-4 border-b border-border pb-6">
-          <div className="max-w-xl">
-            <h1 className="font-serif text-[34px] font-bold leading-[1.05] tracking-[-0.01em] sm:text-[40px]">Lokasi Terdampak</h1>
-            <p className="mt-2 text-sm text-text2">Halo, {user?.nama} — pilih lokasi untuk melihat detail dan berdonasi.</p>
-          </div>
-          {!isLoading && bencana.length > 0 && (
-            <div className="flex items-center gap-5">
-              <div>
-                <b className="block font-mono text-[28px] font-extrabold leading-none tracking-[-0.02em]">{bencana.length}</b>
-                <span className="text-xs text-text2">Lokasi aktif</span>
-              </div>
-              {mendesakCount > 0 && (
-                <div className="border-l border-border pl-5">
-                  <b className="block font-mono text-[28px] font-extrabold leading-none tracking-[-0.02em] text-primary">{mendesakCount}</b>
-                  <span className="text-xs text-text2">Butuh dana mendesak</span>
-                </div>
+                    ))}
+                  </div>
+                  {serah === "antar" && <p className="mt-2.5 rounded-2xl bg-muted px-4 py-3 text-xs text-text2">{b.lokasi_pengungsian ? <>Antar ke <b className="text-foreground">{b.lokasi_pengungsian}</b>. </> : ""}Admin Pusdalops akan mengonfirmasi titik posko lewat WhatsApp.</p>}
+                  {serah === "jemput" && <textarea value={alamatJemput} onChange={e => setAlamatJemput(e.target.value)} rows={2} maxLength={300} placeholder="Alamat penjemputan" className="mt-2.5 w-full resize-none rounded-2xl border-[1.5px] border-border-strong bg-card px-4 py-3 text-sm outline-none focus:border-primary" />}
+                </>
               )}
-            </div>
-          )}
-        </div>
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="overflow-hidden rounded-[6px] border border-border">
-                <Skeleton className="aspect-[4/3] w-full rounded-none" />
-                <div className="space-y-3 p-[26px]">
-                  <Skeleton className="h-3.5 w-2/5" />
-                  <Skeleton className="h-6 w-full" />
-                  <Skeleton className="h-3.5 w-3/5" />
-                  <Skeleton className="h-9 w-full" />
-                </div>
+              <Label hint="opsional">{jenis === "dana" ? "Pesan untuk warga" : "Catatan kondisi barang"}</Label>
+              {jenis === "dana" && <div className="mb-2 flex flex-wrap gap-2">{PESAN_CEPAT.map(p => <button key={p} onClick={() => setPesan(p)} className={cn("rounded-full border-[1.5px] px-3.5 py-2 text-[12.5px] font-bold", pesan === p ? "border-primary bg-primary text-primary-foreground" : "border-border-strong")}>{p}</button>)}</div>}
+              <textarea value={pesan} onChange={e => setPesan(e.target.value)} rows={2} maxLength={500} placeholder={jenis === "dana" ? "Tulis pesan" : "Contoh: baru, masih tersegel"} className="w-full resize-none rounded-2xl border-[1.5px] border-border-strong bg-card px-4 py-3 text-sm outline-none focus:border-primary" />
+            </section>
+          )}
+
+          {/* ---------- PEMBAYARAN / PERIKSA ---------- */}
+          {step === 3 && jenis === "dana" && (
+            <section>
+              <Judul h="Pilih cara bayar" p="Lakukan pembayaran, lalu unggah bukti agar verifikasi lebih cepat." />
+              <div className="mt-5 grid gap-2.5 sm:grid-cols-3">
+                {([["transfer", "Transfer bank", Wallet], ["qris", "QRIS", QrCode], ["ewallet", "e-Wallet", Banknote]] as const).map(([k, l, Ikon]) => (
+                  <button key={k} onClick={() => setMetode(k)} aria-pressed={metode === k} className={cn("flex items-center gap-2.5 rounded-2xl border-2 px-4 py-3.5 text-sm font-extrabold", metode === k ? "border-primary" : "border-border")}>
+                    <Ikon size={19} />{l}{metode === k && <Check size={16} className="ml-auto" />}
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : bencana.length === 0 ? (
-          <Card className="rounded-[10px] border-border bg-surface shadow-none">
-            <CardContent className="py-16 text-center text-text2">
-              <Heart className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="font-medium mb-1 text-foreground">Belum ada bencana yang membutuhkan donasi</p>
-              <p className="text-sm">Laporan bencana baru akan muncul setelah diverifikasi admin.</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {bencana.map((b: any) => (
-              <BencanaCard
-                key={b.id}
-                bencana={b}
-                isPalingTerdampak={terdampakTertinggi > 0 && b.jumlah_terdampak === terdampakTertinggi}
-                onDonasi={() => setDonasiTarget(b)}
-                onDetail={() => setDetailTarget(b)}
-              />
-            ))}
-          </div>
-        )}
+              <div className="mt-4 rounded-2xl bg-ink p-5 text-on-ink">
+                {metode === "transfer" ? (
+                  <>
+                    <small className="font-mono text-[11px] uppercase tracking-[0.1em] text-on-ink-2">Rekening tujuan</small>
+                    <div className="mt-1.5 flex flex-wrap items-center gap-3">
+                      <b className="font-mono text-2xl font-semibold text-white">{REKENING.bank} {REKENING.nomor}</b>
+                      <button onClick={() => { navigator.clipboard?.writeText(REKENING.nomor.replace(/\s/g, "")); setSalin(true); setTimeout(() => setSalin(false), 1800); }}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold text-white">{salin ? <Check size={14} /> : <Copy size={14} />}{salin ? "Tersalin" : "Salin"}</button>
+                    </div>
+                    <p className="mt-1 text-sm">a.n. {REKENING.nama} · kode unik <b className="font-mono text-marigold">BTB-{String(b.id).padStart(4, "0")}</b></p>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <span className="grid h-24 w-24 shrink-0 place-items-center rounded-xl bg-white text-ink"><QrCode size={64} strokeWidth={1.4} /></span>
+                    <p className="text-sm">{metode === "qris" ? "Pindai kode QRIS resmi BPBD Bali yang dikirim admin lewat WhatsApp setelah Anda konfirmasi." : "Tautan pembayaran e-wallet dikirim admin lewat WhatsApp setelah Anda konfirmasi."} <span className="text-on-ink-2">(Prototipe — belum terhubung ke gateway pembayaran.)</span></p>
+                  </div>
+                )}
+              </div>
+              <div className="mt-5">
+                <PhotoUploadField label="Bukti pembayaran (opsional)" urls={bukti} onChange={setBukti} maxFiles={1} hint="Bisa juga menyusul. Admin mencocokkan dengan mutasi rekening." />
+              </div>
+            </section>
+          )}
+          {step === 3 && jenis === "barang" && (
+            <section>
+              <Judul h="Periksa sebelum dikirim" p="Setelah dikirim, admin akan menghubungi Anda untuk penyerahan." />
+              <div className="mt-5 overflow-hidden rounded-2xl border border-border">
+                {daftarItem.map(it => (
+                  <div key={it.nama} className="flex items-center justify-between border-b border-border px-4 py-3 last:border-b-0">
+                    <b className="text-sm">{it.nama}</b><span className="font-mono text-sm font-semibold">{it.jumlah.toLocaleString("id-ID")} {it.satuan}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-sm"><span className="text-text2">Penyerahan:</span> <b>{serah === "antar" ? "Antar sendiri ke posko" : `Dijemput — ${alamatJemput}`}</b></p>
+            </section>
+          )}
+
+          {galat && <p className="mt-4 rounded-xl bg-urgent-soft px-4 py-3 text-sm font-semibold text-status-act-fg">{galat}</p>}
+          <button onClick={lanjut} disabled={kirim}
+            className={cn("mt-6 flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-extrabold text-primary-foreground disabled:opacity-60", step === 3 ? "bg-urgent text-white" : "bg-primary")}>
+            {kirim ? <Loader2 size={20} className="animate-spin" /> : step === 3 ? <HandHeart size={20} /> : null}
+            {step < 3 ? <>Lanjut <ArrowRight size={19} /></> : jenis === "dana" ? `Konfirmasi donasi ${formatRupiah(jumlahDana)}` : "Kirim donasi barang"}
+          </button>
+        </div>
       </div>
 
-      <DetailModal
-        bencana={detailTarget}
-        open={!!detailTarget}
-        onClose={() => setDetailTarget(null)}
-      />
-
-      <DonasiModal
-        bencana={donasiTarget}
-        open={!!donasiTarget}
-        onClose={() => setDonasiTarget(null)}
-        onSuccess={handleDonasiSuccess}
-      />
-    </AppLayout>
+      {/* Ringkasan menempel */}
+      <aside className="lg:sticky lg:top-24">
+        <div className="overflow-hidden rounded-3xl border border-border bg-card">
+          <div className="relative h-32">
+            {b.foto_urls?.[0] ? <img src={b.foto_urls[0]} alt="" className="h-full w-full object-cover" /> : <FotoBencana jenis={b.jenis_bencana} label={false} className="h-full w-full" />}
+            <div className="absolute inset-0 bg-gradient-to-t from-ink/80 to-transparent" />
+            <b className="absolute bottom-3 left-4 right-4 line-clamp-2 text-[15px] font-extrabold text-white">{b.judul}</b>
+          </div>
+          <div className="space-y-2.5 p-5 text-sm">
+            <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-text2">Ringkasan</span>
+            <Baris k="Jenis" v={jenis === "dana" ? "Donasi uang" : "Donasi barang"} />
+            {jenis === "dana" ? <Baris k="Nominal" v={jumlahDana ? formatRupiah(jumlahDana) : "—"} mono /> : <Baris k="Barang" v={daftarItem.length ? daftarItem.map(i => `${i.nama} ×${i.jumlah}`).join(", ") : "—"} />}
+            <Baris k="Tampil sebagai" v={anonim ? "Anonim" : nama.trim() || "—"} />
+            {jenis === "dana" && step === 3 && <Baris k="Metode" v={metode === "transfer" ? "Transfer bank" : metode === "qris" ? "QRIS" : "e-Wallet"} />}
+            <p className="border-t border-dashed border-border-strong pt-3 text-xs text-text2">Donasi berstatus <b className="text-foreground">menunggu</b> sampai diperiksa admin, lalu tercatat di Transparansi.</p>
+          </div>
+        </div>
+      </aside>
+    </div>
   );
+}
+
+/* ------------------------------ Sukses ------------------------------ */
+function Sukses({ b, jenis, ids, ringkas, onLagi }: { b: any; jenis: "dana" | "barang"; ids: number[]; ringkas: string; onLagi: () => void }) {
+  return (
+    <div className="mx-auto max-w-xl text-center">
+      <span className="mx-auto grid h-24 w-24 place-items-center rounded-full bg-status-done-bg text-status-done-fg"><CheckCircle2 size={48} /></span>
+      <h1 className="mt-5 text-[34px] font-extrabold leading-[1.05] tracking-[-0.045em]">Terima kasih. Donasi Anda tercatat.</h1>
+      <p className="mt-2 text-text2">{jenis === "dana" ? `${ringkas} untuk ` : `${ringkas} untuk `}<b className="text-foreground">{b.judul}</b>.</p>
+      <div className="mt-4 flex flex-wrap justify-center gap-2">{ids.map(id => <span key={id} className="rounded-lg bg-muted px-2.5 py-1 font-mono text-sm font-semibold">DNS-{String(id).padStart(4, "0")}</span>)}</div>
+      <StatusBadge status="menunggu" className="mt-3" />
+      <ol className="mt-7 space-y-3 rounded-3xl border border-border bg-card p-5 text-left text-sm">
+        {[
+          ["Donasi terkirim", "Barusan", true],
+          [jenis === "dana" ? "Admin mencocokkan pembayaran" : "Admin menghubungi Anda untuk penyerahan", "lewat WhatsApp", false],
+          [jenis === "dana" ? "Dana dihitung & tampil di Transparansi" : "Barang diterima — progres kebutuhan bertambah", "setelah diperiksa", false],
+        ].map(([t, s, d], i) => (
+          <li key={String(t)} className="flex items-start gap-3">
+            <span className={cn("grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold", d ? "bg-primary text-marigold" : "border-2 border-border-strong text-text2")}>{d ? <Check size={14} /> : i + 1}</span>
+            <span><b className="block">{t}</b><small className="text-xs text-text2">{s}</small></span>
+          </li>
+        ))}
+      </ol>
+      <div className="mt-6 grid gap-2.5 sm:grid-cols-2">
+        <Link href="/transparansi" className="flex h-14 items-center justify-center gap-2 rounded-2xl border-2 border-border-strong font-extrabold hover:border-foreground hover:no-underline">Lihat Transparansi <ChevronRight size={18} /></Link>
+        <button onClick={onLagi} className="flex h-14 items-center justify-center gap-2 rounded-2xl bg-primary font-extrabold text-primary-foreground">Bantu lokasi lain</button>
+      </div>
+    </div>
+  );
+}
+
+function Judul({ h, p }: { h: string; p: string }) {
+  return <><h2 className="text-[24px] font-extrabold leading-tight tracking-[-0.035em]">{h}</h2><p className="mt-1 text-sm text-text2">{p}</p></>;
+}
+
+function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
+  return <div className="mb-2 mt-6 flex justify-between font-mono text-[11px] uppercase tracking-[0.1em] text-text2"><span>{children}</span>{hint && <em className="font-sans text-xs font-semibold normal-case not-italic tracking-normal">{hint}</em>}</div>;
+}
+
+function Baris({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
+  return <div className="flex justify-between gap-4"><span className="text-text2">{k}</span><b className={cn("text-right", mono && "font-mono")}>{v}</b></div>;
 }
