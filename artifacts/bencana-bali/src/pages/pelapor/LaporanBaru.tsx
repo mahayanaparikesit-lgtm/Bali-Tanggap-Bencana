@@ -12,6 +12,7 @@ import { LokasiPicker, jarakMeter, type Titik } from "@/components/LokasiPicker"
 import { PhotoUploadField } from "@/components/PhotoUploadField";
 import { KtpUploadField } from "@/components/KtpUploadField";
 import { StatusBadge } from "@/components/StatusBadge";
+import { LangkahBarang, keKebutuhan, ringkasBarang, type ItemMinta } from "@/components/lapor/LangkahBarang";
 import { cn } from "@/lib/utils";
 
 // Wizard Lapor v2 (PRD v3 § 7) — "ketuk, bukan ketik". Satu-satunya isian
@@ -78,7 +79,8 @@ const PIKTO: Record<KelompokKey, string> = {
 };
 const Pikto = ({ k }: { k: KelompokKey }) => <svg viewBox="0 0 24 24" fill="currentColor" className="h-[26px] w-[26px]" dangerouslySetInnerHTML={{ __html: PIKTO[k] }} />;
 
-const STEPS = ["Jenis bencana", "Lokasi", "Foto & kondisi", "Warga terdampak", "Kontak & kirim"];
+const STEPS = ["Jenis bencana", "Lokasi", "Foto & kondisi", "Warga terdampak", "Barang dibutuhkan", "Kontak & kirim"];
+const AKHIR = STEPS.length;
 
 type Draft = {
   step: number;
@@ -96,6 +98,8 @@ type Draft = {
   pengungsian: string;
   catatan: string;
   korban: Record<KelompokKey, number>;
+  // Barang bantuan yang diminta pelapor (opsional) — dikirim ke kebutuhan-bulk.
+  barang: ItemMinta[];
   hp: string;
   nama: string;
   ktpPath: string | null;
@@ -105,7 +109,7 @@ type Draft = {
 
 const kosong = (nama = ""): Draft => ({
   step: 1, jenis: null, jenisLain: "", bahaya: null, kabupaten: null, detail: "", titik: null, gps: null, akurasi: null,
-  foto: [], kondisi: [], pengungsian: "", catatan: "", korban: { pria: 0, wanita: 0, anak: 0, balita: 0, lansia: 0 },
+  foto: [], kondisi: [], pengungsian: "", catatan: "", korban: { pria: 0, wanita: 0, anak: 0, balita: 0, lansia: 0 }, barang: [],
   hp: "", nama, ktpPath: null, setuju: false, disimpan: null,
 });
 
@@ -143,7 +147,7 @@ function lokasiTeks(d: Draft) {
   return [d.detail.trim(), d.kabupaten].filter(Boolean).join(", ");
 }
 
-type Fase = { t: "isi" } | { t: "kirim" } | { t: "gagal"; pesan: string; offline: boolean } | { t: "terkirim"; id: number };
+type Fase = { t: "isi" } | { t: "kirim" } | { t: "gagal"; pesan: string; offline: boolean } | { t: "terkirim"; id: number; barangGagal: boolean };
 
 export default function LaporanBaru() {
   const { user } = useAuth();
@@ -179,7 +183,7 @@ export default function LaporanBaru() {
       : d.jenis === "lainnya" && d.jenisLain.trim().length < 3 ? "Tulis jenis bencananya"
       : !d.bahaya ? "Pilih tingkat bahaya" : "";
     if (d.step === 2) return d.kabupaten || d.detail.trim().length >= 4 ? "" : "Pilih kabupaten/kota atau tulis nama tempat";
-    if (d.step === 5) {
+    if (d.step === AKHIR) {
       if (d.hp.replace(/\D/g, "").length < 9) return "Isi nomor HP (wajib)";
       if (!d.setuju) return "Centang pernyataan di bawah";
     }
@@ -187,7 +191,7 @@ export default function LaporanBaru() {
   }, [d]);
 
   const pindah = (s: number) => { setDipulihkan(false); ubah({ step: s }); window.scrollTo({ top: 0 }); };
-  const lanjut = () => { if (!halangan) d.step < 5 ? pindah(d.step + 1) : kirim(); };
+  const lanjut = () => { if (!halangan) d.step < AKHIR ? pindah(d.step + 1) : kirim(); };
 
   const cariGps = () => {
     if (!("geolocation" in navigator)) { setGpsStatus("gagal"); return; }
@@ -236,10 +240,22 @@ export default function LaporanBaru() {
         setFase({ t: "gagal", offline: false, pesan: body?.message ?? `Server menolak laporan (kode ${res.status}).` });
         return;
       }
+      // Barang yang diminta pelapor — dikirim terpisah setelah laporan dibuat.
+      // Gagal di sini tidak membatalkan laporan; pelapor diberi tahu di layar sukses.
+      let barangGagal = false;
+      if (d.barang.length) {
+        try {
+          const rk = await fetch(`${BASE}/api/laporan/${body.id}/kebutuhan-bulk`, {
+            method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(keKebutuhan(d.barang)),
+          });
+          barangGagal = !rk.ok;
+        } catch { barangGagal = true; }
+      }
       try { localStorage.removeItem(DRAFT_KEY); } catch { /* abaikan */ }
       queryClient.invalidateQueries({ queryKey: getGetLaporanQueryKey() });
       queryClient.invalidateQueries({ queryKey: getGetLaporanSayaQueryKey() });
-      setFase({ t: "terkirim", id: body.id });
+      setFase({ t: "terkirim", id: body.id, barangGagal });
     } catch {
       setFase({ t: "gagal", offline: true, pesan: "Koneksi terputus." });
     }
@@ -278,9 +294,9 @@ export default function LaporanBaru() {
           <img src={`${import.meta.env.BASE_URL}hero-bali.jpg`} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover object-[70%_60%] opacity-30" />
           <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/90 to-ink/40" />
           <div className="relative mx-auto max-w-[880px] px-4 sm:px-6">
-            <span className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-marigold">Langkah {d.step} dari 5</span>
+            <span className="font-mono text-[11.5px] uppercase tracking-[0.14em] text-marigold">Langkah {d.step} dari {AKHIR}</span>
             <h1 className="mt-1.5 text-[clamp(30px,4vw,44px)] font-extrabold leading-none tracking-[-0.045em] text-white">{STEPS[d.step - 1]}</h1>
-            <ol className="mt-7 grid grid-cols-5 gap-2">
+            <ol className="mt-7 grid grid-cols-6 gap-2">
               {STEPS.map((nama, i) => {
                 const n = i + 1, selesai = n < d.step, kini = n === d.step;
                 return (
@@ -291,7 +307,7 @@ export default function LaporanBaru() {
                           selesai ? "bg-marigold text-ink" : kini ? "bg-white text-ink" : "border border-white/25 text-white/60")}>
                           {selesai ? <Check size={16} /> : n}
                         </span>
-                        <i className={cn("h-0.5 flex-1 rounded-full", n === 5 ? "invisible" : selesai ? "bg-marigold" : "bg-white/20")} />
+                        <i className={cn("h-0.5 flex-1 rounded-full", n === AKHIR ? "invisible" : selesai ? "bg-marigold" : "bg-white/20")} />
                       </span>
                       <span className={cn("hidden text-[12.5px] font-bold sm:block", kini ? "text-white" : selesai ? "text-on-ink group-hover:text-white" : "text-white/50")}>{nama}</span>
                     </button>
@@ -327,7 +343,7 @@ export default function LaporanBaru() {
               <a href="tel:112" className="mt-2.5 flex w-full items-center justify-center gap-2 rounded-full border-[1.5px] border-border-strong py-3.5 text-sm font-bold hover:no-underline"><PhoneCall size={17} />Darurat? Telepon 112</a>
             </div>
           )}
-          {fase.t === "terkirim" && <Terkirim id={fase.id} d={d} total={total} user={!!user} onBaru={mulaiBaru} />}
+          {fase.t === "terkirim" && <Terkirim id={fase.id} barangGagal={fase.barangGagal} d={d} total={total} user={!!user} onBaru={mulaiBaru} />}
 
           {fase.t === "isi" && (
             <>
@@ -504,6 +520,11 @@ export default function LaporanBaru() {
               )}
 
               {d.step === 5 && (
+                <LangkahBarang barang={d.barang} jenis={d.jenis} kondisi={d.kondisi} korban={d.korban}
+                  onChange={f => setD(prev => ({ ...prev, barang: f(prev.barang), disimpan: jam() }))} />
+              )}
+
+              {d.step === AKHIR && (
                 <section>
                   <Judul h="Kontak & kirim" p="Petugas menghubungi nomor ini bila perlu memastikan sesuatu." />
                   <Label hint="wajib" wajib>Nomor HP / WhatsApp</Label>
@@ -526,6 +547,7 @@ export default function LaporanBaru() {
                     <Ringkas k="Lokasi" v={lokasiTeks(d) || "—"} s={d.titik ? `${d.titik.lat.toFixed(5)}, ${d.titik.lng.toFixed(5)}` : "tanpa titik peta"} mono onUbah={() => pindah(2)} />
                     <Ringkas k="Foto" v={d.foto.length ? `${d.foto.length} foto` : "Tanpa foto"} s={`${d.kondisi.length} kondisi dipilih`} onUbah={() => pindah(3)} />
                     <Ringkas k="Warga" v={`${total} orang`} s={KELOMPOK.filter(g => d.korban[g.k]).map(g => `${g.l.split(" ")[0]} ${d.korban[g.k]}`).join(" · ") || "belum diisi"} onUbah={() => pindah(4)} />
+                    <Ringkas k="Barang" v={d.barang.length ? `${d.barang.length} barang diminta` : "Tidak ada"} s={d.barang.length ? ringkasBarang(d.barang) : undefined} onUbah={() => pindah(5)} />
                     <Ringkas k="Pelapor" v={d.nama.trim() || "Anonim"} />
                   </div>
                   <button onClick={() => ubah({ setuju: !d.setuju })} aria-pressed={d.setuju} className="mt-3.5 flex w-full items-start gap-3 text-left text-[13px]">
@@ -552,8 +574,8 @@ export default function LaporanBaru() {
             <div className="flex flex-1 flex-col sm:max-w-[340px]">
               <button onClick={lanjut} disabled={!!halangan}
                 className={cn("flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-base font-extrabold disabled:bg-border-strong disabled:text-text2",
-                  d.step === 5 ? "bg-urgent text-urgent-foreground" : "bg-primary text-primary-foreground")}>
-                {d.step === 5 ? <><Send size={19} />Kirim laporan</> : <>Lanjut <ArrowRight size={19} /></>}
+                  d.step === AKHIR ? "bg-urgent text-urgent-foreground" : "bg-primary text-primary-foreground")}>
+                {d.step === AKHIR ? <><Send size={19} />Kirim laporan</> : <>Lanjut <ArrowRight size={19} /></>}
               </button>
               <span className="mt-1.5 text-center text-xs text-text2 sm:hidden">{halangan || (d.disimpan ? `Draf tersimpan · ${d.disimpan}` : "Draf tersimpan otomatis")}</span>
             </div>
@@ -564,7 +586,7 @@ export default function LaporanBaru() {
   );
 }
 
-function Terkirim({ id, d, total, user, onBaru }: { id: number; d: Draft; total: number; user: boolean; onBaru: () => void }) {
+function Terkirim({ id, barangGagal, d, total, user, onBaru }: { id: number; barangGagal: boolean; d: Draft; total: number; user: boolean; onBaru: () => void }) {
   return (
     <div className="flex flex-col items-center pt-8 text-center">
       <div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-status-done-bg text-status-done-fg"><Check size={42} /></div>
@@ -575,7 +597,11 @@ function Terkirim({ id, d, total, user, onBaru }: { id: number; d: Draft; total:
       <div className="mt-5 w-full rounded-[18px] border border-border bg-card px-3.5 text-left">
         <Ringkas k="Kejadian" v={labelJenis(d.jenis, d.jenisLain)} s={lokasiTeks(d)} />
         <Ringkas k="Warga" v={`${total} orang`} s={KELOMPOK.filter(g => d.korban[g.k]).map(g => `${g.l.split(" ")[0]} ${d.korban[g.k]}`).join(" · ") || "belum diisi"} />
+        {d.barang.length > 0 && <Ringkas k="Barang" v={`${d.barang.length} barang diminta`} s={ringkasBarang(d.barang)} />}
       </div>
+      {barangGagal && (
+        <Catatan tone="wait" icon={<Info size={15} />}>Laporan terkirim, tetapi daftar barang gagal tersimpan. Sebutkan barang yang dibutuhkan saat petugas menghubungi Anda.</Catatan>
+      )}
       <Catatan icon={<Info size={15} />}>Laporan tampil di peta dan daftar publik setelah diverifikasi admin, untuk mencegah titik palsu. Simpan nomor laporan di atas.</Catatan>
       <div className="mt-5 flex w-full flex-col gap-2.5">
         {user && <Link href={`/pelapor/laporan/${id}`} className="flex h-14 items-center justify-center rounded-2xl bg-primary font-extrabold text-primary-foreground hover:no-underline">Lacak status laporan</Link>}
