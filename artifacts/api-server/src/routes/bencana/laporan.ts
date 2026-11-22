@@ -1,12 +1,12 @@
 import { Router } from "express";
 import { db } from "@workspace/db";
-import { laporanTable, kebutuhanTable, penugasanTable } from "@workspace/db/schema";
+import { laporanTable, kebutuhanTable, penugasanTable, donasiTable, transaksiInventarisTable } from "@workspace/db/schema";
 import { eq, count, desc } from "drizzle-orm";
 import { requireAuth, requireRole, getAuthContext } from "../../middlewares/auth";
 import { CreateLaporanBody, UpdateLaporanBody, GetLaporanQueryParams, CreateKebutuhanBody } from "@workspace/api-zod";
 import { publicLaporan, publicPenugasan } from "../../lib/publicFields";
 import { laporanLimiter } from "../../middlewares/rateLimit";
-import { isOwnUploadUrl, isKtpPath, signedKtpUrl } from "../../lib/supabase";
+import { isOwnUploadUrl, isKtpPath, signedKtpUrl, supabase, KTP_BUCKET } from "../../lib/supabase";
 
 const router = Router();
 
@@ -154,6 +154,42 @@ const handleUpdateLaporan = async (req: any, res: any) => {
 };
 
 router.put("/laporan/:id", requireRole(["admin"]), handleUpdateLaporan);
+
+// Hapus laporan (admin) — untuk laporan palsu, duplikat, atau uji coba.
+// Ikut terhapus: kebutuhan & penugasan laporan itu, serta foto KTP di bucket
+// privat. Laporan yang SUDAH punya catatan donasi ditolak (409): catatan uang/
+// barang harus tetap ada untuk Transparansi — tandai saja sebagai selesai/ditolak.
+// Riwayat stok gudang yang menunjuk laporan ini dipertahankan (laporan_id → null).
+router.delete("/laporan/:id", requireRole(["admin"]), async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) return res.status(400).json({ message: "ID tidak valid" });
+
+  const [laporan] = await db.select().from(laporanTable).where(eq(laporanTable.id, id));
+  if (!laporan) return res.status(404).json({ message: "Laporan tidak ditemukan" });
+
+  const [{ jml }] = await db.select({ jml: count() }).from(donasiTable).where(eq(donasiTable.laporan_id, id));
+  if (jml > 0) {
+    return res.status(409).json({
+      message: `Laporan ini punya ${jml} catatan donasi, jadi tidak bisa dihapus agar riwayat donasi tetap utuh. Ubah statusnya saja.`,
+      jumlah_donasi: jml,
+    });
+  }
+
+  const terhapus = await db.transaction(async tx => {
+    const keb = await tx.delete(kebutuhanTable).where(eq(kebutuhanTable.laporan_id, id)).returning({ id: kebutuhanTable.id });
+    const pen = await tx.delete(penugasanTable).where(eq(penugasanTable.laporan_id, id)).returning({ id: penugasanTable.id });
+    await tx.update(transaksiInventarisTable).set({ laporan_id: null }).where(eq(transaksiInventarisTable.laporan_id, id));
+    await tx.delete(laporanTable).where(eq(laporanTable.id, id));
+    return { kebutuhan: keb.length, penugasan: pen.length };
+  });
+
+  // Foto KTP tidak perlu disimpan lagi — gagal hapus file tidak membatalkan.
+  if (laporan.foto_ktp_path && isKtpPath(laporan.foto_ktp_path)) {
+    await supabase.storage.from(KTP_BUCKET).remove([laporan.foto_ktp_path]).catch(() => undefined);
+  }
+
+  return res.json({ id, ...terhapus });
+});
 router.patch("/laporan/:id", requireRole(["admin"]), handleUpdateLaporan);
 
 // Tambah banyak kebutuhan sekaligus (dipakai form pelapor, sengaja TANPA login

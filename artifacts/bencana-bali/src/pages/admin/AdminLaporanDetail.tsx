@@ -21,6 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatRupiah } from "@/lib/format";
 import { MapPin, Users, Phone, User, CheckCircle2, XCircle, Plus, ClipboardList, Banknote, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { KorbanRincian } from "@/components/KorbanRincian";
+import { HapusLaporan } from "@/components/admin/HapusLaporan";
 
 const KATEGORI_OPTIONS = ["pangan", "sandang", "medis", "tempat_tinggal", "air_bersih", "lainnya"];
 const KATEGORI_LABELS: Record<string, string> = {
@@ -140,6 +141,7 @@ export default function AdminLaporanDetail() {
             </div>
             <h1 className="text-[20px] font-extrabold tracking-[-0.01em]">{laporan.judul}</h1>
           </div>
+          <HapusLaporan id={laporan.id} judul={laporan.judul} jumlahKebutuhan={kebutuhan?.length ?? 0} />
         </div>
 
         {/* Info */}
