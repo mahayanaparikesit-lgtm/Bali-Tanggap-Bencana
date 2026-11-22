@@ -231,7 +231,8 @@ export function LangkahBarang({ barang, onChange, jenis, kondisi, korban }: Prop
         <span className="text-[15px] font-extrabold tracking-[-0.01em]">Pilih dari katalog</span>
         <em className="text-xs font-semibold not-italic text-text2">ketuk lagi untuk batal</em>
       </div>
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" role="tablist" aria-label="Kategori barang">
+      {/* HP: geser dengan jari. Layar lebar (mouse tidak bisa geser samping): turun baris, semua terlihat. */}
+      <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0" role="tablist" aria-label="Kategori barang">
         {GRUP.map(g => {
           const on = grup === g.k, n = jumlahPerGrup(g.k);
           return (
