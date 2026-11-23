@@ -8,9 +8,12 @@ import { authLimiter } from "../../middlewares/rateLimit";
 
 const router = Router();
 
-// Role yang boleh dipilih sendiri lewat registrasi publik. Admin/relawan
-// hanya bisa diberikan lewat jalur terproteksi (lihat PATCH /users/:id/role).
-const PUBLIC_REGISTER_ROLES = ["pelapor", "donatur"];
+// Role yang boleh dipilih sendiri lewat registrasi publik. Admin hanya bisa
+// diberikan lewat jalur terproteksi (PATCH /users/:id/role).
+// Relawan boleh mendaftar sendiri: role ini tidak membuka data apa pun —
+// akses relawan dicocokkan lewat email ke tabel relawan, dan penugasan hanya
+// bisa diberikan admin ke relawan yang sudah TERVERIFIKASI (lihat POST /penugasan).
+const PUBLIC_REGISTER_ROLES = ["pelapor", "donatur", "relawan"];
 const ALL_ROLES = ["admin", "relawan", "donatur", "pelapor"];
 
 router.post("/auth/register", authLimiter, async (req, res) => {

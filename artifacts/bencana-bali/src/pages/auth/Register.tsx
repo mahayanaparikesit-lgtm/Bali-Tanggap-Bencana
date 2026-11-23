@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Eye, EyeOff, Loader2, Heart, FileText, Check } from "lucide-react";
+import { Eye, EyeOff, Loader2, Heart, FileText, Check, HardHat, Info } from "lucide-react";
 import { AuthShell } from "@/components/public/AuthShell";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +24,20 @@ const ROLES: { value: UserRole; label: string; desc: string; icon: React.Element
     icon: FileText,
     color: "text-primary",
   },
+  {
+    value: "relawan",
+    label: "Relawan",
+    desc: "Bantu di lapangan setelah diverifikasi Pusdalops",
+    icon: HardHat,
+    color: "text-status-wait-fg",
+  },
 ];
+
+// /register?peran=relawan → langsung terpilih (dipakai tombol "Jadi relawan" di beranda).
+const peranAwal = (): UserRole => {
+  const p = new URLSearchParams(window.location.search).get("peran");
+  return ROLES.some(r => r.value === p) ? (p as UserRole) : "donatur";
+};
 
 export default function Register() {
   const { register } = useAuth();
@@ -32,7 +45,7 @@ export default function Register() {
   const [nama, setNama] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("donatur");
+  const [role, setRole] = useState<UserRole>(peranAwal);
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +57,8 @@ export default function Register() {
     try {
       const user = await register({ nama, email, password, role });
       if (user.role === "admin") navigate("/admin");
-      else if (user.role === "relawan") navigate("/relawan");
+      // Relawan baru: langsung lanjut melengkapi data relawan.
+      else if (user.role === "relawan") navigate("/relawan/daftar");
       else if (user.role === "pelapor") navigate("/pelapor");
       else navigate("/donatur");
     } catch (err: any) {
@@ -65,7 +79,7 @@ export default function Register() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label>Pilih Peran Anda</Label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {ROLES.map(r => {
                     const Icon = r.icon;
                     const selected = role === r.value;
@@ -93,6 +107,15 @@ export default function Register() {
                     );
                   })}
                 </div>
+                {role === "relawan" && (
+                  <div className="flex gap-2.5 rounded-[10px] bg-status-wait-bg px-3 py-2.5 text-xs leading-relaxed text-status-wait-fg">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0" />
+                    <span>
+                      <b>Pendaftaran relawan ada 3 tahap:</b> (1) buat akun di sini, (2) lengkapi data diri, nomor HP, keahlian, dan foto KTP,
+                      (3) Pusdalops memverifikasi. Penugasan baru bisa diberikan setelah Anda terverifikasi.
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

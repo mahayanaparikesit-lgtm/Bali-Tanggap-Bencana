@@ -9,11 +9,13 @@ export function KtpUploadField({
   onChange,
   label = "Foto KTP",
   hint,
+  subjudul = "Satu ketukan. NIK tidak perlu diketik.",
 }: {
   path: string | null;
   onChange: (path: string | null) => void;
   label?: string;
   hint?: string;
+  subjudul?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export function KtpUploadField({
           className="flex h-[110px] w-full flex-col items-center justify-center gap-1.5 rounded-[18px] border-2 border-dashed border-border-strong bg-card text-sm font-extrabold disabled:opacity-70">
           {busy ? <Loader2 size={26} className="animate-spin" /> : <IdCard size={26} />}
           {busy ? "Mengunggah…" : "Foto KTP dengan kamera"}
-          <small className="text-xs font-medium text-text2">Satu ketukan. NIK tidak perlu diketik.</small>
+          <small className="text-xs font-medium text-text2">{subjudul}</small>
         </button>
       )}
       {hint && <p className="mt-2 text-xs text-text2">{hint}</p>}

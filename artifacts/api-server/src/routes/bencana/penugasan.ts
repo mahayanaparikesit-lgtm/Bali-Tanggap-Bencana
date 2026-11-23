@@ -40,9 +40,14 @@ router.post("/penugasan", requireRole(["admin"]), async (req, res) => {
   }
   const body = result.data;
 
-  const [relawan] = await db.select({ nama: relawanTable.nama })
+  const [relawan] = await db.select({ nama: relawanTable.nama, status_verifikasi: relawanTable.status_verifikasi })
     .from(relawanTable)
     .where(eq(relawanTable.id, body.relawan_id));
+  // Relawan kini bisa mendaftar sendiri — tugas hanya untuk yang sudah diverifikasi.
+  if (!relawan) return res.status(404).json({ message: "Relawan tidak ditemukan" });
+  if (relawan.status_verifikasi !== "terverifikasi") {
+    return res.status(409).json({ message: "Relawan ini belum diverifikasi, jadi belum bisa ditugaskan." });
+  }
   const [row] = await db.insert(penugasanTable).values({
     laporan_id: body.laporan_id,
     relawan_id: body.relawan_id,

@@ -96,7 +96,7 @@ const FAQ: [string, string][] = [
   ["Berapa lama laporan diverifikasi?", "Operator Pusdalops memeriksa setiap laporan, menggabungkan laporan ganda, lalu menetapkan prioritas. Laporan baru tampil di peta dan daftar publik setelah diverifikasi, untuk mencegah titik palsu."],
   ["Ke mana donasi saya disalurkan?", "Ke lokasi yang Anda pilih, untuk kebutuhan yang dicatat relawan di poskonya. Dana baru dihitung sebagai terkumpul setelah diterima dan dicek admin, dan semuanya tampil di halaman Transparansi."],
   ["Bisakah saya donasi barang, bukan uang?", "Bisa. Pilih barang dari daftar kebutuhan lokasi lewat akun donatur, lalu antar ke posko atau minta dijemput relawan."],
-  ["Bagaimana cara menjadi relawan?", "Peran relawan diberikan oleh admin Pusdalops setelah verifikasi identitas dan keahlian. Hubungi Pusdalops di (0361) 251177 atau koordinator relawan di desa Anda."],
+  ["Bagaimana cara menjadi relawan?", "Buat akun dengan peran Relawan, lalu lengkapi data diri, nomor HP, keahlian, dan foto KTP. Admin Pusdalops memverifikasi identitas Anda; setelah terverifikasi, penugasan akan muncul di dashboard relawan. Pertanyaan: hubungi Pusdalops di (0361) 251177."],
 ];
 
 export default function Home() {
@@ -193,8 +193,8 @@ export default function Home() {
               desc="Lima langkah singkat: jenis, lokasi, foto & kondisi, warga terdampak, kirim. Sebagian besar cukup diketuk." cta="Buat laporan" />
             <JalurCard href={user ? dashboardHref(user.role) : "/donatur"} n="02 · uang / barang" title="Donasi ke lokasi" icon={<HandHeart size={24} />} tone="ink"
               desc="Pilih lokasi terdampak dan lihat kebutuhannya per item. Uang atau barang, keduanya dilacak sampai tersalur." cta="Pilih lokasi" />
-            <JalurCard href="#faq" n="03 · diverifikasi" title="Jadi relawan" icon={<HardHat size={24} />} tone="gold"
-              desc="Peran relawan diberikan Pusdalops setelah verifikasi. Lihat cara mengajukan diri di tanya jawab." cta="Cara mengajukan" />
+            <JalurCard href="/register?peran=relawan" n="03 · diverifikasi" title="Jadi relawan" icon={<HardHat size={24} />} tone="gold"
+              desc="Daftar sendiri, lengkapi data dan keahlian, lalu Pusdalops memverifikasi sebelum Anda ditugaskan." cta="Daftar relawan" />
           </div>
           <div className="mt-4 flex items-center gap-2.5 text-[13.5px] text-text2">
             <PhoneCall size={16} className="shrink-0 text-urgent" />
